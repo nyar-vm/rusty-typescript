@@ -1,0 +1,16 @@
+[package]
+name = "typescript"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+description = "TypeScript compiler and runtime"
+
+[dependencies]
+typescript-types = { workspace = true }
+typescript-ir = { workspace = true }
+oak-typescript = { workspace = true }
+oak-core = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+log = { workspace = true }
+env_logger = { workspace = true }

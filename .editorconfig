@@ -2,10 +2,14 @@
 charset = utf-8
 
 
-[*.pest]
+[*.{vue,tsx,jsx}]
+indent_style = space
+indent_size = 2
+
+[*.{sass,scss,css}]
 indent_style = space
 indent_size = 4
 
-[*.toml]
+[*.{json,toml}]
 indent_style = space
 indent_size = 4

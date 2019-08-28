@@ -1,0 +1,2 @@
+# 屏蔽 Rust 文件的统计
+*.rs linguist-vendored

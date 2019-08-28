@@ -1,0 +1,12 @@
+[package]
+name = "typescript-ir"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+description = "Intermediate representation for TypeScript compiler"
+
+[dependencies]
+typescript-types = { workspace = true }
+oak-typescript = { workspace = true }
+serde = { workspace = true, features = ["derive"] }

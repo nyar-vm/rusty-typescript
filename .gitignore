@@ -5,10 +5,27 @@ time-travel.*
 
 # IDE
 .vscode/
-.vs/
 .idea/
+.trae/
+.vs/
 *.iml
+
+# Node
+node_modules/
+build/
+.wrangler/
+dist/
+static/**/*
+index.css
+pnpm-lock.yaml
 
 # Rust
 target/
 Cargo.lock
+*.log
+*.txt
+.cargo/config.toml
+
+# SQLite
+*.db
+*.db-wal
