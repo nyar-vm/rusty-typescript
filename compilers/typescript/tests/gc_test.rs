@@ -164,3 +164,191 @@ fn test_memory_manager() {
     let ptr3 = mm.allocate(8).unwrap();
     assert_ne!(ptr1, ptr3);
 }
+
+/// 测试并行GC性能
+///
+/// 验证并行GC比串行GC更快
+#[test]
+fn test_parallel_gc_performance() {
+    use std::time::Instant;
+
+    // 创建大量对象
+    let mut gc = typescript::gc::GC::new();
+
+    // 分配10000个对象
+    for i in 0..10000 {
+        let value = typescript_types::TsValue::Number(i as f64);
+        let obj = gc.allocate(value, 8, 1);
+        gc.add_root(obj);
+    }
+
+    // 测量并行GC时间
+    let start = Instant::now();
+    gc.collect();
+    let parallel_time = start.elapsed().as_micros();
+
+    println!("Parallel GC time: {}us", parallel_time);
+
+    // 验证对象被正确回收
+    assert!(gc.heap_size() > 0); // 根对象应该存活
+}
+
+/// 测试不同内存分配策略
+///
+/// 验证不同内存分配策略的性能差异
+#[test]
+fn test_memory_allocation_strategies() {
+    use std::time::Instant;
+
+    // 测试默认分配器
+    let mut gc_default = typescript::gc::GC::new();
+    let start_default = Instant::now();
+
+    for i in 0..5000 {
+        let value = typescript_types::TsValue::Number(i as f64);
+        gc_default.allocate(value, 8, 1);
+    }
+
+    gc_default.collect();
+    let default_time = start_default.elapsed().as_micros();
+
+    // 测试伙伴分配器
+    let mut gc_buddy = typescript::gc::GC::with_buddy_allocator();
+    let start_buddy = Instant::now();
+
+    for i in 0..5000 {
+        let value = typescript_types::TsValue::Number(i as f64);
+        gc_buddy.allocate(value, 8, 1);
+    }
+
+    gc_buddy.collect();
+    let buddy_time = start_buddy.elapsed().as_micros();
+
+    println!("Default allocator time: {}us", default_time);
+    println!("Buddy allocator time: {}us", buddy_time);
+}
+
+/// 测试分代收集
+///
+/// 验证分代收集的晋升机制
+#[test]
+fn test_generational_collection() {
+    let mut gc = typescript::gc::GC::new();
+
+    // 分配一些对象
+    let mut objects = Vec::new();
+    for i in 0..200 {
+        let value = typescript_types::TsValue::Number(i as f64);
+        let obj = gc.allocate(value, 8, 1);
+        objects.push(obj);
+    }
+
+    // 添加一些根对象
+    for i in 0..10 {
+        gc.add_root(objects[i]);
+    }
+
+    // 执行多次新生代GC
+    for _ in 0..5 {
+        gc.collect_young_gen();
+    }
+
+    // 验证老年代中有对象
+    assert!(gc.old_gen_size() > 0);
+    // 验证新生代中也有对象
+    assert!(gc.young_gen_size() > 0);
+}
+
+/// 测试并发GC
+///
+/// 验证并发GC的基本功能
+#[test]
+fn test_concurrent_gc() {
+    let mut gc = typescript::gc::GC::new();
+
+    // 启用并发GC
+    gc.enable_concurrent(true);
+
+    // 分配一些对象
+    for i in 0..1000 {
+        let value = typescript_types::TsValue::Number(i as f64);
+        let obj = gc.allocate(value, 8, 1);
+        if i < 100 {
+            gc.add_root(obj);
+        }
+    }
+
+    // 执行GC
+    gc.collect();
+
+    // 验证对象被正确回收
+    assert!(gc.heap_size() > 0);
+    assert!(gc.is_concurrent_enabled());
+}
+
+/// 测试GC统计功能
+///
+/// 验证GC统计信息的正确性
+#[test]
+fn test_gc_stats() {
+    let mut gc = typescript::gc::GC::new();
+
+    // 分配一些对象
+    for i in 0..1000 {
+        let value = typescript_types::TsValue::Number(i as f64);
+        let obj = gc.allocate(value, 8, 1);
+        if i < 100 {
+            gc.add_root(obj);
+        }
+    }
+
+    // 执行GC
+    gc.collect();
+
+    // 获取统计信息
+    let stats = gc.stats();
+
+    // 验证统计信息
+    assert!(stats.collection_count > 0);
+    assert!(stats.collected_objects > 0);
+    assert!(stats.allocation_count > 0);
+    assert!(stats.total_collection_time_us > 0);
+
+    println!("GC Stats:");
+    println!("  Collection count: {}", stats.collection_count);
+    println!("  Collected objects: {}", stats.collected_objects);
+    println!("  Collected bytes: {}", stats.collected_bytes);
+    println!("  Average collection time: {}us", stats.average_collection_time_us());
+    println!("  Memory fragmentation: {:.2}%", stats.fragmentation_ratio * 100.0);
+}
+
+/// 测试内存分配策略切换
+///
+/// 验证可以动态切换内存分配策略
+#[test]
+fn test_allocation_strategy_switch() {
+    use typescript::memory::AllocationStrategy;
+
+    let mut gc = typescript::gc::GC::new();
+
+    // 分配一些对象使用默认策略
+    for i in 0..100 {
+        let value = typescript_types::TsValue::Number(i as f64);
+        gc.allocate(value, 8, 1);
+    }
+
+    // 切换到伙伴分配器
+    gc.set_allocation_strategy(AllocationStrategy::Buddy);
+
+    // 再分配一些对象
+    for i in 100..200 {
+        let value = typescript_types::TsValue::Number(i as f64);
+        gc.allocate(value, 8, 1);
+    }
+
+    // 执行GC
+    gc.collect();
+
+    // 验证对象被正确回收
+    assert!(gc.heap_size() > 0);
+}

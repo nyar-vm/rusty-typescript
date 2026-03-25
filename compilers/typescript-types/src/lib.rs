@@ -1,6 +1,7 @@
 #![warn(missing_docs)]
 
 use std::{
+    collections::HashMap,
     hash::{Hash, Hasher},
     rc::Rc,
 };
@@ -18,7 +19,7 @@ pub enum TsValue {
     /// 字符串
     String(String),
     /// 对象
-    Object(Vec<(String, TsValue)>),
+    Object(HashMap<String, TsValue>),
     /// 数组
     Array(Vec<TsValue>),
     /// 函数
@@ -477,8 +478,11 @@ impl<T: ToTsValue> ToTsValue for Vec<T> {
 
 impl<K: ToString, V: ToTsValue> ToTsValue for Vec<(K, V)> {
     fn to_ts_value(&self) -> TsValue {
-        let entries: Vec<(String, TsValue)> = self.iter().map(|(k, v)| (k.to_string(), v.to_ts_value())).collect();
-        TsValue::Object(entries)
+        let mut map = HashMap::new();
+        for (k, v) in self {
+            map.insert(k.to_string(), v.to_ts_value());
+        }
+        TsValue::Object(map)
     }
 }
 
@@ -514,8 +518,7 @@ impl<T: ToTsValue, E: ToString> ToTsValue for Result<T, E> {
 
 impl ToTsValue for std::collections::HashMap<String, TsValue> {
     fn to_ts_value(&self) -> TsValue {
-        let entries: Vec<(String, TsValue)> = self.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
-        TsValue::Object(entries)
+        TsValue::Object(self.clone())
     }
 }
 
@@ -532,3 +535,9 @@ impl ToTsValue for std::collections::HashMap<TsValue, TsValue> {
         TsValue::Map(entries)
     }
 }
+
+// 实现 Send trait 用于线程安全
+unsafe impl Send for TsValue {}
+
+// 实现 Sync trait 用于线程安全
+unsafe impl Sync for TsValue {}

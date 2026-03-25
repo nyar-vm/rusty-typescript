@@ -3,6 +3,7 @@
     <div class="playground-header">
       <h2 class="playground-title">TypeScript Playground</h2>
       <div class="playground-subtitle">Powered by Rusty-TypeScript</div>
+      <div class="playground-version">v0.1.0</div>
     </div>
     <div class="playground-container">
       <div class="code-editor">
@@ -13,28 +14,28 @@
         <div v-else ref="editorContainer" class="editor-container"></div>
       </div>
       <div class="playground-controls">
-        <button @click="runCode" class="control-button run-button" :disabled="editorLoading">
+        <button @click="runCode" class="control-button run-button" :disabled="editorLoading" title="Run TypeScript code (Ctrl+Enter)">
           <span class="button-icon">▶</span>
           <span class="button-text">Run</span>
         </button>
-        <button @click="compileCode" class="control-button compile-button" :disabled="editorLoading">
+        <button @click="compileCode" class="control-button compile-button" :disabled="editorLoading" title="Compile TypeScript code">
           <span class="button-icon">⚙</span>
           <span class="button-text">Compile</span>
         </button>
-        <button @click="formatCode" class="control-button format-button" :disabled="editorLoading">
+        <button @click="formatCode" class="control-button format-button" :disabled="editorLoading" title="Format code (Ctrl+K Ctrl+F)">
           <span class="button-icon">✨</span>
           <span class="button-text">Format</span>
         </button>
-        <button @click="resetCode" class="control-button reset-button" :disabled="editorLoading">
+        <button @click="resetCode" class="control-button reset-button" :disabled="editorLoading" title="Reset to default code">
           <span class="button-icon">↻</span>
           <span class="button-text">Reset</span>
         </button>
         <div class="control-divider"></div>
-        <button @click="toggleDebug" class="control-button debug-button" :disabled="editorLoading" :class="{ active: debugMode }">
+        <button @click="toggleDebug" class="control-button debug-button" :disabled="editorLoading" :class="{ active: debugMode }" title="Toggle debug mode">
           <span class="button-icon">🐛</span>
           <span class="button-text">{{ debugMode ? 'Disable Debug' : 'Enable Debug' }}</span>
         </button>
-        <button @click="togglePerformance" class="control-button performance-button" :disabled="editorLoading" :class="{ active: performanceMode }">
+        <button @click="togglePerformance" class="control-button performance-button" :disabled="editorLoading" :class="{ active: performanceMode }" title="Toggle performance analysis">
           <span class="button-icon">📊</span>
           <span class="button-text">{{ performanceMode ? 'Disable Performance' : 'Enable Performance' }}</span>
         </button>
@@ -68,19 +69,19 @@
           <span class="section-subtitle">Step through your code</span>
         </div>
         <div class="debug-controls">
-          <button @click="stepOver" class="debug-step-button">
+          <button @click="stepOver" class="debug-step-button" title="Step over current line">
             <span class="button-icon">⤵</span>
             <span class="button-text">Step Over</span>
           </button>
-          <button @click="stepInto" class="debug-step-button">
+          <button @click="stepInto" class="debug-step-button" title="Step into function">
             <span class="button-icon">↙</span>
             <span class="button-text">Step Into</span>
           </button>
-          <button @click="stepOut" class="debug-step-button">
+          <button @click="stepOut" class="debug-step-button" title="Step out of function">
             <span class="button-icon">↗</span>
             <span class="button-text">Step Out</span>
           </button>
-          <button @click="continueDebug" class="debug-continue-button">
+          <button @click="continueDebug" class="debug-continue-button" title="Continue execution">
             <span class="button-icon">▶▶</span>
             <span class="button-text">Continue</span>
           </button>
@@ -140,6 +141,15 @@
         </div>
       </div>
     </div>
+    <div class="playground-footer">
+      <div class="footer-info">
+        <span class="footer-text">Rusty TypeScript Playground</span>
+        <span class="footer-separator">•</span>
+        <a href="https://github.com/rusty-typescript/rusty-typescript" target="_blank" class="footer-link">GitHub</a>
+        <span class="footer-separator">•</span>
+        <a href="/docs" class="footer-link">Documentation</a>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -158,8 +168,7 @@ import {
     executeTypeScript,
     getCompilationErrors,
     getPerformanceMetrics as getWasiPerformanceMetrics,
-    getVersion,
-} from "../../typescript-wasi/src/index";
+} from "@nyar/typescript";
 
 const editorContainer = ref<HTMLElement | null>(null);
 let editor: any = null;
@@ -252,8 +261,7 @@ const compileCode = async () => {
         try {
             // Call the TypeScript WASI module to compile code
             const result = await compileTypeScript(code);
-            const errorJson = await getCompilationErrors(code);
-            const errorArray = JSON.parse(errorJson);
+            const errorArray = await getCompilationErrors(code);
 
             errors.value = errorArray;
             output.value = `Compiling TypeScript code:
@@ -357,8 +365,7 @@ const realTimeCompile = async () => {
         debounceTimer = window.setTimeout(async () => {
             try {
                 // Call the TypeScript WASI module to get compilation errors
-                const errorJson = await getCompilationErrors(code);
-                const errorArray = JSON.parse(errorJson);
+                const errorArray = await getCompilationErrors(code);
 
                 errors.value = errorArray;
 
@@ -630,6 +637,7 @@ defineExpose({
   padding: 30px;
   text-align: center;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  position: relative;
 }
 
 .playground-title {
@@ -645,6 +653,19 @@ defineExpose({
   font-size: 1.1rem;
   opacity: 0.9;
   font-weight: 300;
+  margin-bottom: 8px;
+}
+
+.playground-version {
+  font-size: 0.9rem;
+  opacity: 0.8;
+  font-weight: 400;
+  position: absolute;
+  top: 15px;
+  right: 20px;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 4px 12px;
+  border-radius: 12px;
 }
 
 /* Container Styles */
@@ -1119,6 +1140,50 @@ defineExpose({
   background: linear-gradient(90deg, #ff9800 0%, #f57c00 100%);
 }
 
+/* Footer Styles */
+.playground-footer {
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 20px;
+  text-align: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin-top: 30px;
+}
+
+.footer-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+.footer-text {
+  font-size: 14px;
+  font-weight: 500;
+  opacity: 0.9;
+}
+
+.footer-separator {
+  font-size: 14px;
+  opacity: 0.6;
+}
+
+.footer-link {
+  font-size: 14px;
+  font-weight: 500;
+  color: white;
+  text-decoration: none;
+  opacity: 0.9;
+  transition: all 0.3s ease;
+}
+
+.footer-link:hover {
+  opacity: 1;
+  text-decoration: underline;
+  transform: translateY(-1px);
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .playground-container {
@@ -1131,6 +1196,12 @@ defineExpose({
   
   .playground-title {
     font-size: 2rem;
+  }
+  
+  .playground-version {
+    position: static;
+    display: inline-block;
+    margin-top: 10px;
   }
   
   .playground-controls {
@@ -1148,6 +1219,15 @@ defineExpose({
   
   .debug-controls {
     justify-content: center;
+  }
+  
+  .footer-info {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .footer-separator {
+    display: none;
   }
 }
 </style>

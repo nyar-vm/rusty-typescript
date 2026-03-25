@@ -16,7 +16,6 @@ pub mod types;
 pub mod visitor;
 
 // Reexport oak-typescript AST
-pub use oak_typescript::ast;
 
 pub use optimization::*;
 pub use performance::*;

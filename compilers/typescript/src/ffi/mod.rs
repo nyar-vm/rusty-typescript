@@ -15,10 +15,7 @@ impl<T> ObjectPool<T> {
     /// # 参数
     /// - `max_size`: 对象池的最大容量
     pub fn new(max_size: usize) -> Self {
-        Self {
-            pool: Mutex::new(Vec::with_capacity(max_size)),
-            max_size,
-        }
+        Self { pool: Mutex::new(Vec::with_capacity(max_size)), max_size }
     }
 
     /// 从对象池获取一个对象
@@ -45,22 +42,22 @@ impl<T> ObjectPool<T> {
     }
 }
 
-/// 全局对象池实例
-lazy_static::lazy_static! {
+/// 线程本地对象池
+thread_local! {
     /// TsValue 数组对象池
-    pub static ref TS_VALUE_ARRAY_POOL: ObjectPool<Vec<TsValue>> = ObjectPool::new(100);
+    pub static TS_VALUE_ARRAY_POOL: ObjectPool<Vec<TsValue>> = ObjectPool::new(100);
     /// TsValue 对象池
-    pub static ref TS_VALUE_OBJECT_POOL: ObjectPool<Vec<(String, TsValue)>> = ObjectPool::new(100);
+    pub static TS_VALUE_OBJECT_POOL: ObjectPool<std::collections::HashMap<String, TsValue>> = ObjectPool::new(100);
     /// TsValue Map 条目池
-    pub static ref TS_VALUE_MAP_POOL: ObjectPool<Vec<(TsValue, TsValue)>> = ObjectPool::new(100);
+    pub static TS_VALUE_MAP_POOL: ObjectPool<Vec<(TsValue, TsValue)>> = ObjectPool::new(100);
 }
 
 /// NAPI 模块加载器
 pub mod napi;
 
 pub use napi::{
-    LoadedNapiModule, NapiEnv, NapiExport, NapiFunction, NapiModule, NapiModuleLoader, NapiStatus, NapiValue,
-    NapiValueType, check_napi_status, create_napi_error, napi_to_ts_value, ts_value_to_napi,
+    LoadedNapiModule, NapiEnv, NapiExport, NapiFunction, NapiModule, NapiModuleLoader, NapiStatus, NapiValue, NapiValueType,
+    check_napi_status, create_napi_error, napi_to_ts_value, ts_value_to_napi,
 };
 
 /// 性能测试模块
@@ -70,7 +67,7 @@ pub use benchmark::{run_ffi_benchmark, run_napi_benchmark};
 /// FFI 函数类型
 ///
 /// 使用 Arc 包装以支持线程安全和克隆
-pub type FfiFunction = Arc<dyn Fn(&[TsValue]) -> Result<TsValue, TsError> + Send + Sync>;
+pub type FfiFunction = Arc<dyn for<'a> Fn(&'a [TsValue]) -> Result<TsValue, TsError> + Send + Sync>;
 
 /// FFI 模块
 pub struct FfiModule {
@@ -86,10 +83,7 @@ impl FfiModule {
     /// # 参数
     /// - `name`: 模块名称
     pub fn new(name: &str) -> Self {
-        Self {
-            functions: std::collections::HashMap::new(),
-            name: name.to_string(),
-        }
+        Self { functions: std::collections::HashMap::new(), name: name.to_string() }
     }
 
     /// 添加 FFI 函数
@@ -99,6 +93,18 @@ impl FfiModule {
     /// - `func`: 函数实现
     pub fn add_function(&mut self, name: &str, func: FfiFunction) {
         self.functions.insert(name.to_string(), func);
+    }
+
+    /// 注册 FFI 函数（与 add_function 相同，为了兼容性）
+    ///
+    /// # 参数
+    /// - `name`: 函数名称
+    /// - `func`: 函数实现
+    pub fn register_function<F>(&mut self, name: &str, func: F)
+    where
+        F: Fn(&[TsValue]) -> Result<TsValue, TsError> + Send + Sync + 'static,
+    {
+        self.functions.insert(name.to_string(), Arc::new(func));
     }
 
     /// 调用 FFI 函数
@@ -158,10 +164,7 @@ pub struct FfiManager {
 impl FfiManager {
     /// 创建一个新的 FFI 管理器
     pub fn new() -> Self {
-        Self {
-            modules: std::collections::HashMap::new(),
-            napi_loader: NapiModuleLoader::new(),
-        }
+        Self { modules: std::collections::HashMap::new(), napi_loader: NapiModuleLoader::new() }
     }
 
     /// 加载 NAPI 模块
@@ -204,6 +207,15 @@ impl FfiManager {
     /// - `module`: 模块实例
     pub fn add_module(&mut self, name: &str, module: FfiModule) {
         self.modules.insert(name.to_string(), module);
+    }
+
+    /// 注册 FFI 模块（与 add_module 相同，为了兼容性）
+    ///
+    /// # 参数
+    /// - `module`: 模块实例
+    pub fn register_module(&mut self, module: FfiModule) {
+        let name = module.name().to_string();
+        self.modules.insert(name, module);
     }
 
     /// 获取 FFI 模块
@@ -313,6 +325,23 @@ impl FfiManager {
     pub fn remove_module(&mut self, name: &str) {
         self.modules.remove(name);
     }
+
+    /// 注册 FFI 函数到默认模块
+    ///
+    /// # 参数
+    /// - `name`: 函数名称
+    /// - `func`: 函数实现
+    pub fn register_function<F>(&mut self, name: &str, func: F)
+    where
+        F: for<'a> Fn(&'a [TsValue]) -> TsValue + Send + Sync + 'static,
+    {
+        // 获取或创建默认模块
+        let default_module = self.modules.entry("default".to_string()).or_insert_with(|| FfiModule::new("default"));
+
+        // 包装函数以符合 FfiFunction 类型
+        let wrapped_func: FfiFunction = Arc::new(move |args: &[TsValue]| Ok(func(args)));
+        default_module.add_function(name, wrapped_func);
+    }
 }
 
 /// 从 Rust 类型转换为 TypeScript 值
@@ -399,7 +428,7 @@ impl ToRust<Vec<TsValue>> for TsValue {
 /// 实现 FromRust  trait for Vec<(String, TsValue)>
 impl FromRust<Vec<(String, TsValue)>> for TsValue {
     fn from_rust(value: Vec<(String, TsValue)>) -> TsValue {
-        TsValue::Object(value)
+        TsValue::Object(value.into_iter().collect())
     }
 }
 
@@ -407,7 +436,7 @@ impl FromRust<Vec<(String, TsValue)>> for TsValue {
 impl ToRust<Vec<(String, TsValue)>> for TsValue {
     fn to_rust(value: &TsValue) -> Result<Vec<(String, TsValue)>, TsError> {
         match value {
-            TsValue::Object(props) => Ok(props.to_vec()),
+            TsValue::Object(props) => Ok(props.iter().map(|(k, v)| (k.clone(), v.clone())).collect()),
             _ => Err(TsError::TypeError("Expected object".to_string())),
         }
     }
@@ -515,12 +544,12 @@ impl ToRust<Result<TsValue, TsError>> for TsValue {
 pub fn get_object_property(obj: &TsValue, key: &str) -> Result<TsValue, TsError> {
     match obj {
         TsValue::Object(props) => {
-            for (k, v) in props {
-                if k == key {
-                    return Ok(v.clone());
-                }
+            if let Some(value) = props.get(key) {
+                Ok(value.clone())
             }
-            Err(TsError::ReferenceError(format!("Property '{}' not found", key)))
+            else {
+                Err(TsError::ReferenceError(format!("Property '{}' not found", key)))
+            }
         }
         _ => Err(TsError::TypeError("Expected object".to_string())),
     }
@@ -540,17 +569,7 @@ pub fn set_object_property(obj: &TsValue, key: &str, value: TsValue) -> Result<T
     match obj {
         TsValue::Object(props) => {
             let mut new_props = props.clone();
-            let mut found = false;
-            for (k, v) in &mut new_props {
-                if k == key {
-                    *v = value.clone();
-                    found = true;
-                    break;
-                }
-            }
-            if !found {
-                new_props.push((key.to_string(), value));
-            }
+            new_props.insert(key.to_string(), value);
             Ok(TsValue::Object(new_props))
         }
         _ => Err(TsError::TypeError("Expected object".to_string())),

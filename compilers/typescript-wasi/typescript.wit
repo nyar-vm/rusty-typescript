@@ -1,0 +1,55 @@
+package rusty-typescript:typescript@0.1.0;
+
+interface typescript {
+  /// Compile TypeScript code
+  /// 
+  /// # Parameters
+  /// - `code`: The TypeScript code to compile
+  /// 
+  /// # Returns
+  /// A result containing either the compilation result or an error
+  compile: func(code: string) -> result<string, string>;
+
+  /// Execute TypeScript code
+  /// 
+  /// # Parameters
+  /// - `code`: The TypeScript code to execute
+  /// 
+  /// # Returns
+  /// A result containing either the execution result or an error
+  execute: func(code: string) -> result<string, string>;
+
+  /// Get compilation errors
+  /// 
+  /// # Parameters
+  /// - `code`: The TypeScript code to check
+  /// 
+  /// # Returns
+  /// A list of compilation errors
+  get-compilation-errors: func(code: string) -> list<string>;
+
+  /// Get performance metrics
+  /// 
+  /// # Returns
+  /// A JSON string containing performance metrics
+  get-performance-metrics: func() -> string;
+
+  /// Evaluate a simple expression
+  /// 
+  /// # Parameters
+  /// - `expr`: The expression to evaluate
+  /// 
+  /// # Returns
+  /// A result containing either the evaluation result or an error
+  evaluate-expression: func(expr: string) -> result<string, string>;
+
+  /// Get version information
+  /// 
+  /// # Returns
+  /// The version string
+  get-version: func() -> string;
+}
+
+world typescript-world {
+  export typescript;
+}

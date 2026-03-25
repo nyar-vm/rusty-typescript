@@ -1,5 +1,7 @@
 //! exception 模块
-//!
+
+/// 异常处理器
+#[derive(Debug, Clone)]
 pub struct ExceptionHandler {
     /// 处理的起始指令位置
     pub start_ip: usize,
@@ -14,6 +16,3 @@ pub struct ExceptionHandler {
     /// finally 块的指令位置
     pub finally_ip: Option<usize>,
 }
-
-/// 模块实例
-#[derive(Debug, Clone)]

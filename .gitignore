@@ -21,6 +21,7 @@ pnpm-lock.yaml
 
 # Rust
 target/
+vendor/
 Cargo.lock
 *.log
 *.txt

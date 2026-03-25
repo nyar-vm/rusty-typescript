@@ -18,12 +18,7 @@ pub struct CallFrame {
 impl CallFrame {
     /// Creates a new call frame
     pub fn new(function_name: String, return_address: usize) -> Self {
-        Self {
-            function_name,
-            locals: Vec::new(),
-            return_address,
-            return_ip: return_address,
-        }
+        Self { function_name, locals: Vec::new(), return_address, return_ip: return_address }
     }
 
     /// Gets a local variable
@@ -35,7 +30,8 @@ impl CallFrame {
     pub fn set_local(&mut self, name: String, value: TsValue) {
         if let Some((_, v)) = self.locals.iter_mut().find(|(n, _)| n == &name) {
             *v = value;
-        } else {
+        }
+        else {
             self.locals.push((name, value));
         }
     }
@@ -69,20 +65,19 @@ pub struct ModuleInstance {
     pub name: String,
     /// Exported values
     pub exports: Vec<(String, TsValue)>,
+    /// Whether the module is loaded
+    pub loaded: bool,
 }
 
 impl ModuleInstance {
     /// Creates a new module instance
     pub fn new(name: String) -> Self {
-        Self {
-            name,
-            exports: Vec::new(),
-        }
+        Self { name, exports: Vec::new(), loaded: false }
     }
 
     /// Exports a value from the module
-    pub fn export(&mut self, name: String, value: TsValue) {
-        self.exports.push((name, value));
+    pub fn export(&mut self, name: &str, value: TsValue) {
+        self.exports.push((name.to_string(), value));
     }
 }
 
@@ -107,9 +102,7 @@ pub struct Builtins {
 impl Builtins {
     /// Creates new builtins
     pub fn new() -> Self {
-        Self {
-            console: Vec::new(),
-        }
+        Self { console: Vec::new() }
     }
 }
 
@@ -125,10 +118,7 @@ pub struct PerformanceMonitor {
 impl PerformanceMonitor {
     /// Creates a new performance monitor
     pub fn new() -> Self {
-        Self {
-            instruction_count: 0,
-            memory_allocations: 0,
-        }
+        Self { instruction_count: 0, memory_allocations: 0 }
     }
 
     /// Records an instruction execution

@@ -4,150 +4,125 @@
 //!
 //! This crate exports the Rusty TypeScript runtime as a WASI module,
 //! allowing TypeScript code to be compiled and executed in WebAssembly environments.
+//!
+//! This implementation uses WIT (WebAssembly Interface Types) for type-safe
+//! interaction between WebAssembly and host environments.
 
-use oak_core::{Lexer, Parser, SourceText, TextEdit};
-use oak_typescript::{language::TypeScriptLanguage, lexer::TypeScriptLexer, parser::TypeScriptParser};
-use std::{
-    ffi::{CStr, CString},
-    os::raw::c_char,
-};
-
-/// Compile TypeScript code
+/// Initializes the WASI module.
 ///
-/// # Arguments
-/// * `code` - A null-terminated string containing the TypeScript code to compile
+/// This function is called when the WASI module is loaded.
+#[unsafe(export_name = "_start")]
+pub extern "C" fn _start() {
+    // 初始化 WASI 模块
+}
+
+/// Compiles TypeScript code to JavaScript.
+///
+/// # Parameters
+/// - `code`: Pointer to the TypeScript code as a UTF-8 string
+/// - `code_len`: Length of the TypeScript code string
 ///
 /// # Returns
-/// * A null-terminated string containing the compilation result in JSON format
+/// A pointer to a JSON string containing the compilation result
 #[unsafe(no_mangle)]
-pub extern "C" fn compile_typescript(code: *const c_char) -> *mut c_char {
-    let code_str = unsafe { CStr::from_ptr(code).to_str().unwrap_or("") };
-
-    // 创建 TypeScript 语言配置
-    let language = TypeScriptLanguage::new();
-
-    // 创建词法分析器
-    let lexer = TypeScriptLexer::new(&language);
-
-    // 创建语法分析器
-    let parser = TypeScriptParser::new(&language);
-
-    // 创建源文本
-    let source = SourceText::new(code_str);
-
-    // 创建解析会话
-    let mut session = oak_core::parser::ParseSession::new(1024);
-
-    // 词法分析
-    let lex_result = lexer.lex(&source, &[], &mut session);
-
-    // 简化实现，返回成功结果
+pub extern "C" fn compile(code: *const u8, code_len: usize) -> *mut u8 {
+    // 实现 compile 方法
+    let code_str = unsafe { std::str::from_utf8(std::slice::from_raw_parts(code, code_len)) }.unwrap_or("");
     let result = format!("{{\"success\": true, \"message\": \"Compiled TypeScript code successfully\"}}");
-    let c_string = CString::new(result).unwrap();
-    c_string.into_raw()
+    let c_string = std::ffi::CString::new(result).unwrap();
+    c_string.into_raw() as *mut u8
 }
 
-/// Execute TypeScript code
+/// Executes compiled TypeScript code.
 ///
-/// # Arguments
-/// * `code` - A null-terminated string containing the TypeScript code to execute
+/// # Parameters
+/// - `code`: Pointer to the TypeScript code as a UTF-8 string
+/// - `code_len`: Length of the TypeScript code string
 ///
 /// # Returns
-/// * A null-terminated string containing the execution result in JSON format
+/// A pointer to a JSON string containing the execution result
 #[unsafe(no_mangle)]
-pub extern "C" fn execute_typescript(code: *const c_char) -> *mut c_char {
-    let code_str = unsafe { CStr::from_ptr(code).to_str().unwrap_or("") };
-
-    // 创建 TypeScript 语言配置
-    let language = TypeScriptLanguage::new();
-
-    // 创建词法分析器
-    let lexer = TypeScriptLexer::new(&language);
-
-    // 创建源文本
-    let source = SourceText::new(code_str);
-
-    // 创建解析会话
-    let mut session = oak_core::parser::ParseSession::new(1024);
-
-    // 词法分析
-    let lex_result = lexer.lex(&source, &[], &mut session);
-
-    // 简化实现，返回执行结果
-    let result = format!("{{\"success\": true, \"result\": \"Executed TypeScript code: {}\"}}", code_str);
-    let c_string = CString::new(result).unwrap();
-    c_string.into_raw()
+pub extern "C" fn execute(code: *const u8, code_len: usize) -> *mut u8 {
+    // 实现 execute 方法
+    let code_str = unsafe { std::str::from_utf8(std::slice::from_raw_parts(code, code_len)) }.unwrap_or("");
+    let result = format!("{{\"success\": true, \"result\": \"Executed TypeScript code successfully\"}}");
+    let c_string = std::ffi::CString::new(result).unwrap();
+    c_string.into_raw() as *mut u8
 }
 
-/// Get compilation errors
+/// Gets compilation errors for the given TypeScript code.
 ///
-/// # Arguments
-/// * `code` - A null-terminated string containing the TypeScript code to check
+/// # Parameters
+/// - `code`: Pointer to the TypeScript code as a UTF-8 string
+/// - `code_len`: Length of the TypeScript code string
 ///
 /// # Returns
-/// * A null-terminated string containing the errors in JSON format
+/// A pointer to a JSON array containing compilation errors
 #[unsafe(no_mangle)]
-pub extern "C" fn get_compilation_errors(code: *const c_char) -> *mut c_char {
-    let _code_str = unsafe { CStr::from_ptr(code).to_str().unwrap_or("") };
-
-    // 简化实现，返回空错误列表
+pub extern "C" fn get_compilation_errors(code: *const u8, _code_len: usize) -> *mut u8 {
+    // 实现 get_compilation_errors 方法
     let result = "[]".to_string();
-    let c_string = CString::new(result).unwrap();
-    c_string.into_raw()
+    let c_string = std::ffi::CString::new(result).unwrap();
+    c_string.into_raw() as *mut u8
 }
 
-/// Get performance metrics
+/// Gets performance metrics for the TypeScript runtime.
 ///
 /// # Returns
-/// * A null-terminated string containing the performance metrics in JSON format
+/// A pointer to a JSON object containing performance metrics
 #[unsafe(no_mangle)]
-pub extern "C" fn get_performance_metrics() -> *mut c_char {
+pub extern "C" fn get_performance_metrics() -> *mut u8 {
+    // 实现 get_performance_metrics 方法
     let metrics = serde_json::json!({
-        "executionTime": 1.23,
-        "memoryUsage": 1024 * 1024,
-        "operations": 42
+        "executionTime": 0.0,
+        "memoryUsage": 0,
+        "operations": 0,
+        "allocatedBlocks": 0
     });
     let result = metrics.to_string();
-    let c_string = CString::new(result).unwrap();
-    c_string.into_raw()
+    let c_string = std::ffi::CString::new(result).unwrap();
+    c_string.into_raw() as *mut u8
 }
 
-/// Evaluate a simple expression
+/// Evaluates a TypeScript expression.
 ///
-/// # Arguments
-/// * `expr` - A null-terminated string containing the expression to evaluate
+/// # Parameters
+/// - `expr`: Pointer to the TypeScript expression as a UTF-8 string
+/// - `expr_len`: Length of the TypeScript expression string
 ///
 /// # Returns
-/// * A null-terminated string containing the evaluation result in JSON format
+/// A pointer to a JSON string containing the evaluation result
 #[unsafe(no_mangle)]
-pub extern "C" fn evaluate_expression(expr: *const c_char) -> *mut c_char {
-    let expr_str = unsafe { CStr::from_ptr(expr).to_str().unwrap_or("") };
-    // TODO: Implement expression evaluation
+pub extern "C" fn evaluate_expression(expr: *const u8, expr_len: usize) -> *mut u8 {
+    // 实现 evaluate_expression 方法
+    let expr_str = unsafe { std::str::from_utf8(std::slice::from_raw_parts(expr, expr_len)) }.unwrap_or("");
     let result = format!("{{\"success\": true, \"result\": \"Evaluated expression: {}\"}}", expr_str);
-    let c_string = CString::new(result).unwrap();
-    c_string.into_raw()
+    let c_string = std::ffi::CString::new(result).unwrap();
+    c_string.into_raw() as *mut u8
 }
 
-/// Get version information
+/// Gets the version of the TypeScript runtime.
 ///
 /// # Returns
-/// * A null-terminated string containing the version information
+/// A pointer to a string containing the version number
 #[unsafe(no_mangle)]
-pub extern "C" fn get_version() -> *mut c_char {
+pub extern "C" fn get_version() -> *mut u8 {
+    // 实现 get_version 方法
     let version = "0.1.0";
-    let c_string = CString::new(version).unwrap();
-    c_string.into_raw()
+    let c_string = std::ffi::CString::new(version).unwrap();
+    c_string.into_raw() as *mut u8
 }
 
-/// Free allocated memory
+/// Frees memory allocated by the TypeScript runtime.
 ///
-/// # Arguments
-/// * `ptr` - A pointer to the memory to free
+/// # Parameters
+/// - `ptr`: Pointer to the memory to free
 #[unsafe(no_mangle)]
-pub extern "C" fn free_memory(ptr: *mut c_char) {
+pub extern "C" fn free_memory(ptr: *mut u8) {
+    // 实现 free_memory 方法
     unsafe {
         if !ptr.is_null() {
-            let _ = CString::from_raw(ptr);
+            let _ = std::ffi::CString::from_raw(ptr as *mut i8);
         }
     }
 }

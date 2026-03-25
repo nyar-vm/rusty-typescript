@@ -1,9 +1,23 @@
 use crate::{ControlFlowGraph, Expression, Module, Program, Statement};
+use typescript_types::TsValue;
+
+/// 性能分析数据
+#[derive(Debug, Clone)]
+pub struct ProfileData {
+    /// 函数调用次数
+    pub function_calls: std::collections::HashMap<String, usize>,
+    /// 循环执行次数
+    pub loop_executions: std::collections::HashMap<usize, usize>,
+    /// 热点表达式
+    pub hot_expressions: std::collections::HashMap<String, usize>,
+}
 
 /// 优化器
 pub struct Optimizer {
     /// 优化级别
     pub optimization_level: OptimizationLevel,
+    /// 性能分析数据
+    pub profile_data: Option<ProfileData>,
 }
 
 /// 优化级别
@@ -22,7 +36,12 @@ pub enum OptimizationLevel {
 impl Optimizer {
     /// 创建一个新的优化器
     pub fn new(optimization_level: OptimizationLevel) -> Self {
-        Self { optimization_level }
+        Self { optimization_level, profile_data: None }
+    }
+
+    /// 创建带有性能分析数据的优化器
+    pub fn new_with_profile(optimization_level: OptimizationLevel, profile_data: ProfileData) -> Self {
+        Self { optimization_level, profile_data: Some(profile_data) }
     }
 
     /// 优化程序
@@ -102,10 +121,528 @@ impl Optimizer {
     }
 
     /// 基于分析结果进行优化
-    fn optimize_using_analysis(&self, _statements: &mut Vec<Statement>, _cfg: &ControlFlowGraph) {
-        // 这里可以实现基于到达定义和活跃变量的优化
-        // 例如：死代码消除、常量传播、变量重命名等
-        // 由于这是一个示例，我们暂时只做简单的死代码消除
+    fn optimize_using_analysis(&self, statements: &mut Vec<Statement>, cfg: &ControlFlowGraph) {
+        // 实现基于到达定义和活跃变量的优化
+        // 1. 常量传播
+        self.propagate_constants(statements, cfg);
+
+        // 2. 死代码消除
+        self.eliminate_dead_code(statements, cfg);
+
+        // 3. 循环不变式外提
+        self.hoist_loop_invariants(statements);
+
+        // 4. 公共子表达式消除
+        self.eliminate_common_subexpressions(statements);
+
+        // 5. 强度削弱
+        self.strength_reduction(statements);
+
+        // 6. 基于 profile 的优化
+        if self.profile_data.is_some() {
+            self.optimize_based_on_profile(statements);
+        }
+
+        // 7. 变量重命名（可选）
+        // self.rename_variables(statements, cfg);
+    }
+
+    /// 循环不变式外提
+    fn hoist_loop_invariants(&self, statements: &mut Vec<Statement>) {
+        let mut i = 0;
+        while i < statements.len() {
+            match &mut statements[i] {
+                Statement::While { test, body } => {
+                    let invariants = self.find_loop_invariants(body, test);
+                    if !invariants.is_empty() {
+                        // 将不变式移到循环前
+                        let invariants_clone = invariants.clone();
+                        statements.splice(i..i, invariants);
+                        i += invariants_clone.len();
+                    }
+                }
+                Statement::For { init, test, update, body } => {
+                    let invariants = self
+                        .find_loop_invariants(body, test.as_deref().unwrap_or(&Expression::Literal(TsValue::Boolean(true))));
+                    if !invariants.is_empty() {
+                        // 将不变式移到循环前
+                        let invariants_clone = invariants.clone();
+                        statements.splice(i..i, invariants);
+                        i += invariants_clone.len();
+                    }
+                }
+                Statement::Block(inner_statements) => {
+                    self.hoist_loop_invariants(inner_statements);
+                }
+                _ => {}
+            }
+            i += 1;
+        }
+    }
+
+    /// 查找循环不变式
+    fn find_loop_invariants(&self, body: &Statement, test: &Expression) -> Vec<Statement> {
+        let mut invariants = Vec::new();
+        let mut loop_variables = self.find_loop_variables(body, test);
+
+        // 查找循环体中的不变变量声明
+        if let Statement::Block(inner_statements) = body {
+            for stmt in inner_statements {
+                if let Statement::VariableDeclaration { name, ty, initializer } = stmt {
+                    if let Some(init) = initializer {
+                        // 检查初始化表达式是否不依赖循环变量
+                        if !self.depends_on_variables(init, &loop_variables) {
+                            invariants.push(Statement::VariableDeclaration {
+                                name: name.clone(),
+                                ty: ty.clone(),
+                                initializer: Some(init.clone()),
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        invariants
+    }
+
+    /// 查找循环变量
+    fn find_loop_variables(&self, body: &Statement, test: &Expression) -> std::collections::HashSet<String> {
+        let mut variables = std::collections::HashSet::new();
+        self.collect_variables(body, &mut variables);
+        self.collect_variables_in_expr(test, &mut variables);
+        variables
+    }
+
+    /// 收集表达式中使用的变量
+    fn collect_variables_in_expr(&self, expr: &Expression, variables: &mut std::collections::HashSet<String>) {
+        match expr {
+            Expression::Identifier(name) => {
+                variables.insert(name.clone());
+            }
+            Expression::Binary { left, right, .. } => {
+                self.collect_variables_in_expr(left, variables);
+                self.collect_variables_in_expr(right, variables);
+            }
+            Expression::Unary { expr: inner_expr, .. } => {
+                self.collect_variables_in_expr(inner_expr, variables);
+            }
+            Expression::Call { callee, args } => {
+                self.collect_variables_in_expr(callee, variables);
+                for arg in args {
+                    self.collect_variables_in_expr(arg, variables);
+                }
+            }
+            Expression::Member { object, property } => {
+                self.collect_variables_in_expr(object, variables);
+                self.collect_variables_in_expr(property, variables);
+            }
+            _ => {}
+        }
+    }
+
+    /// 收集语句中使用的变量
+    fn collect_variables(&self, stmt: &Statement, variables: &mut std::collections::HashSet<String>) {
+        match stmt {
+            Statement::VariableDeclaration { name, initializer, .. } => {
+                variables.insert(name.clone());
+                if let Some(init) = initializer {
+                    self.collect_variables_in_expr(init, variables);
+                }
+            }
+            Statement::Expression(expr) => {
+                self.collect_variables_in_expr(expr, variables);
+            }
+            Statement::If { test, consequent, alternate } => {
+                self.collect_variables_in_expr(test, variables);
+                self.collect_variables(consequent, variables);
+                if let Some(alt) = alternate {
+                    self.collect_variables(alt, variables);
+                }
+            }
+            Statement::While { test, body } => {
+                self.collect_variables_in_expr(test, variables);
+                self.collect_variables(body, variables);
+            }
+            Statement::For { init, test, update, body } => {
+                if let Some(init_stmt) = init {
+                    self.collect_variables(init_stmt, variables);
+                }
+                if let Some(test_expr) = test {
+                    self.collect_variables_in_expr(test_expr, variables);
+                }
+                if let Some(update_expr) = update {
+                    self.collect_variables_in_expr(update_expr, variables);
+                }
+                self.collect_variables(body, variables);
+            }
+            Statement::Return(expr) => {
+                if let Some(e) = expr {
+                    self.collect_variables_in_expr(e, variables);
+                }
+            }
+            Statement::Block(statements) => {
+                for stmt in statements {
+                    self.collect_variables(stmt, variables);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    /// 检查表达式是否依赖指定变量
+    fn depends_on_variables(&self, expr: &Expression, variables: &std::collections::HashSet<String>) -> bool {
+        match expr {
+            Expression::Identifier(name) => variables.contains(name),
+            Expression::Binary { left, right, .. } => {
+                self.depends_on_variables(left, variables) || self.depends_on_variables(right, variables)
+            }
+            Expression::Unary { expr: inner_expr, .. } => self.depends_on_variables(inner_expr, variables),
+            Expression::Call { callee, args } => {
+                self.depends_on_variables(callee, variables) || args.iter().any(|arg| self.depends_on_variables(arg, variables))
+            }
+            Expression::Member { object, property } => {
+                self.depends_on_variables(object, variables) || self.depends_on_variables(property, variables)
+            }
+            _ => false,
+        }
+    }
+
+    /// 公共子表达式消除
+    fn eliminate_common_subexpressions(&self, statements: &mut Vec<Statement>) {
+        // 实现公共子表达式消除
+        // 这里是一个简化的实现
+        for stmt in statements {
+            match stmt {
+                Statement::Expression(expr) => {
+                    *expr = Box::new(self.eliminate_common_subexpressions_in_expr(expr));
+                }
+                Statement::Block(inner_statements) => {
+                    self.eliminate_common_subexpressions(inner_statements);
+                }
+                _ => {}
+            }
+        }
+    }
+
+    /// 在表达式中消除公共子表达式
+    fn eliminate_common_subexpressions_in_expr(&self, expr: &Expression) -> Expression {
+        match expr {
+            Expression::Binary { left, op, right } => {
+                let optimized_left = self.eliminate_common_subexpressions_in_expr(left);
+                let optimized_right = self.eliminate_common_subexpressions_in_expr(right);
+                Expression::Binary { left: Box::new(optimized_left), op: op.clone(), right: Box::new(optimized_right) }
+            }
+            Expression::Unary { op, expr: inner_expr } => {
+                let optimized_inner = self.eliminate_common_subexpressions_in_expr(inner_expr);
+                Expression::Unary { op: op.clone(), expr: Box::new(optimized_inner) }
+            }
+            Expression::Call { callee, args } => {
+                let optimized_callee = self.eliminate_common_subexpressions_in_expr(callee);
+                let mut optimized_args = Vec::new();
+                for arg in args {
+                    optimized_args.push(self.eliminate_common_subexpressions_in_expr(arg));
+                }
+                Expression::Call { callee: Box::new(optimized_callee), args: optimized_args }
+            }
+            Expression::Member { object, property } => {
+                let optimized_object = self.eliminate_common_subexpressions_in_expr(object);
+                let optimized_property = self.eliminate_common_subexpressions_in_expr(property);
+                Expression::Member { object: Box::new(optimized_object), property: Box::new(optimized_property) }
+            }
+            _ => expr.clone(),
+        }
+    }
+
+    /// 强度削弱
+    fn strength_reduction(&self, statements: &mut Vec<Statement>) {
+        for stmt in statements {
+            match stmt {
+                Statement::Expression(expr) => {
+                    *expr = Box::new(self.strength_reduction_in_expr(expr));
+                }
+                Statement::Block(inner_statements) => {
+                    self.strength_reduction(inner_statements);
+                }
+                _ => {}
+            }
+        }
+    }
+
+    /// 在表达式中进行强度削弱
+    fn strength_reduction_in_expr(&self, expr: &Expression) -> Expression {
+        match expr {
+            Expression::Binary { left, op, right } => {
+                let optimized_left = self.strength_reduction_in_expr(left);
+                let optimized_right = self.strength_reduction_in_expr(right);
+
+                // 强度削弱优化
+                if let (Expression::Literal(TsValue::Number(a)), Expression::Literal(TsValue::Number(b))) =
+                    (&optimized_left, &optimized_right)
+                {
+                    // 例如：a * 2 可以优化为 a << 1
+                    // 这里是一个简化的实现
+                }
+
+                Expression::Binary { left: Box::new(optimized_left), op: op.clone(), right: Box::new(optimized_right) }
+            }
+            Expression::Unary { op, expr: inner_expr } => {
+                let optimized_inner = self.strength_reduction_in_expr(inner_expr);
+                Expression::Unary { op: op.clone(), expr: Box::new(optimized_inner) }
+            }
+            _ => expr.clone(),
+        }
+    }
+
+    /// 基于性能分析数据进行优化
+    fn optimize_based_on_profile(&self, statements: &mut Vec<Statement>) {
+        // 实现基于性能分析数据的优化
+        // 例如：根据热点信息进行针对性优化
+        if let Some(profile) = &self.profile_data {
+            // 基于函数调用次数进行优化
+            for stmt in statements {
+                match stmt {
+                    Statement::Expression(expr) => {
+                        // 检查是否是热点表达式
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
+
+    /// 常量传播
+    fn propagate_constants(&self, statements: &mut Vec<Statement>, _cfg: &ControlFlowGraph) {
+        // 简单的常量传播实现
+        use std::collections::HashMap;
+
+        let mut constant_map: HashMap<String, TsValue> = HashMap::new();
+        let mut i = 0;
+
+        while i < statements.len() {
+            match &statements[i] {
+                Statement::VariableDeclaration { name, initializer, .. } => {
+                    if let Some(init) = initializer {
+                        if let Some(constant_value) = init.eval() {
+                            // 记录常量变量
+                            constant_map.insert(name.clone(), constant_value);
+                        }
+                    }
+                }
+                Statement::Expression(expr) => {
+                    // 尝试替换表达式中的常量
+                    let optimized_expr = self.propagate_constants_in_expr(expr, &constant_map);
+                    statements[i] = Statement::Expression(Box::new(optimized_expr));
+                }
+                _ => {}
+            }
+            i += 1;
+        }
+    }
+
+    /// 在表达式中传播常量
+    fn propagate_constants_in_expr(
+        &self,
+        expr: &Expression,
+        constant_map: &std::collections::HashMap<String, TsValue>,
+    ) -> Expression {
+        match expr {
+            Expression::Identifier(name) => {
+                // 如果是常量变量，替换为常量
+                if let Some(constant) = constant_map.get(name) {
+                    return Expression::Literal(constant.clone());
+                }
+                expr.clone()
+            }
+            Expression::Binary { left, op, right } => {
+                let optimized_left = self.propagate_constants_in_expr(left, constant_map);
+                let optimized_right = self.propagate_constants_in_expr(right, constant_map);
+
+                // 尝试常量折叠
+                if let (Some(left_val), Some(right_val)) = (optimized_left.eval(), optimized_right.eval()) {
+                    let result = Expression::eval_binary_op(left_val, op.clone(), right_val);
+                    return Expression::Literal(result);
+                }
+
+                Expression::Binary { left: Box::new(optimized_left), op: op.clone(), right: Box::new(optimized_right) }
+            }
+            Expression::Unary { op, expr: inner_expr } => {
+                let optimized_inner = self.propagate_constants_in_expr(inner_expr, constant_map);
+
+                // 尝试常量折叠
+                if let Some(inner_val) = optimized_inner.eval() {
+                    let result = Expression::eval_unary_op(op.clone(), inner_val);
+                    return Expression::Literal(result);
+                }
+
+                Expression::Unary { op: op.clone(), expr: Box::new(optimized_inner) }
+            }
+            Expression::Call { callee, args } => {
+                let optimized_callee = self.propagate_constants_in_expr(callee, constant_map);
+                let mut optimized_args = Vec::new();
+                for arg in args {
+                    optimized_args.push(self.propagate_constants_in_expr(arg, constant_map));
+                }
+
+                Expression::Call { callee: Box::new(optimized_callee), args: optimized_args }
+            }
+            Expression::Member { object, property } => {
+                let optimized_object = self.propagate_constants_in_expr(object, constant_map);
+                let optimized_property = self.propagate_constants_in_expr(property, constant_map);
+
+                Expression::Member { object: Box::new(optimized_object), property: Box::new(optimized_property) }
+            }
+            Expression::Index { object, index } => {
+                let optimized_object = self.propagate_constants_in_expr(object, constant_map);
+                let optimized_index = self.propagate_constants_in_expr(index, constant_map);
+
+                Expression::Index { object: Box::new(optimized_object), index: Box::new(optimized_index) }
+            }
+            Expression::Assignment { left, op, right } => {
+                let optimized_left = self.propagate_constants_in_expr(left, constant_map);
+                let optimized_right = self.propagate_constants_in_expr(right, constant_map);
+
+                Expression::Assignment { left: Box::new(optimized_left), op: op.clone(), right: Box::new(optimized_right) }
+            }
+            Expression::Conditional { test, consequent, alternate } => {
+                let optimized_test = self.propagate_constants_in_expr(test, constant_map);
+
+                // 尝试常量折叠条件表达式
+                if let Some(test_value) = optimized_test.eval() {
+                    let condition = test_value.to_boolean();
+                    if condition {
+                        return self.propagate_constants_in_expr(consequent, constant_map);
+                    }
+                    else {
+                        return self.propagate_constants_in_expr(alternate, constant_map);
+                    }
+                }
+
+                let optimized_consequent = self.propagate_constants_in_expr(consequent, constant_map);
+                let optimized_alternate = self.propagate_constants_in_expr(alternate, constant_map);
+
+                Expression::Conditional {
+                    test: Box::new(optimized_test),
+                    consequent: Box::new(optimized_consequent),
+                    alternate: Box::new(optimized_alternate),
+                }
+            }
+            _ => expr.clone(),
+        }
+    }
+
+    /// 死代码消除
+    fn eliminate_dead_code(&self, statements: &mut Vec<Statement>, _cfg: &ControlFlowGraph) {
+        // 1. 消除未使用的变量声明
+        let mut i = 0;
+        while i < statements.len() {
+            match &statements[i] {
+                Statement::VariableDeclaration { name, .. } => {
+                    // 检查变量是否被使用
+                    let mut is_used = false;
+                    for j in i + 1..statements.len() {
+                        if self.is_variable_used(&statements[j], name) {
+                            is_used = true;
+                            break;
+                        }
+                    }
+
+                    if !is_used {
+                        // 删除未使用的变量声明
+                        statements.remove(i);
+                        continue;
+                    }
+                }
+                Statement::Block(inner_statements) => {
+                    // 递归处理块内语句
+                    let mut optimized_inner = inner_statements.clone();
+                    self.eliminate_dead_code(&mut optimized_inner, _cfg);
+                    if optimized_inner.is_empty() {
+                        // 如果块为空，删除整个块
+                        statements.remove(i);
+                        continue;
+                    }
+                    else {
+                        // 更新块内语句
+                        statements[i] = Statement::Block(optimized_inner);
+                    }
+                }
+                _ => {}
+            }
+            i += 1;
+        }
+    }
+
+    /// 检查变量是否在语句中被使用
+    fn is_variable_used(&self, stmt: &Statement, variable_name: &str) -> bool {
+        match stmt {
+            Statement::Expression(expr) => self.is_variable_used_in_expr(expr, variable_name),
+            Statement::VariableDeclaration { initializer, .. } => {
+                if let Some(init) = initializer {
+                    self.is_variable_used_in_expr(init, variable_name)
+                }
+                else {
+                    false
+                }
+            }
+            Statement::If { test, consequent, alternate } => {
+                self.is_variable_used_in_expr(test, variable_name)
+                    || self.is_variable_used(consequent, variable_name)
+                    || alternate.as_ref().map(|alt| self.is_variable_used(alt, variable_name)).unwrap_or(false)
+            }
+            Statement::While { test, body } => {
+                self.is_variable_used_in_expr(test, variable_name) || self.is_variable_used(body, variable_name)
+            }
+            Statement::For { init, test, update, body } => {
+                init.as_ref().map(|init_stmt| self.is_variable_used(init_stmt, variable_name)).unwrap_or(false)
+                    || test.as_ref().map(|test_expr| self.is_variable_used_in_expr(test_expr, variable_name)).unwrap_or(false)
+                    || update
+                        .as_ref()
+                        .map(|update_expr| self.is_variable_used_in_expr(update_expr, variable_name))
+                        .unwrap_or(false)
+                    || self.is_variable_used(body, variable_name)
+            }
+            Statement::Return(expr) => expr.as_ref().map(|e| self.is_variable_used_in_expr(e, variable_name)).unwrap_or(false),
+            Statement::Block(statements) => {
+                for stmt in statements {
+                    if self.is_variable_used(stmt, variable_name) {
+                        return true;
+                    }
+                }
+                false
+            }
+            _ => false,
+        }
+    }
+
+    /// 检查变量是否在表达式中被使用
+    fn is_variable_used_in_expr(&self, expr: &Expression, variable_name: &str) -> bool {
+        match expr {
+            Expression::Identifier(name) => name == variable_name,
+            Expression::Binary { left, right, .. } => {
+                self.is_variable_used_in_expr(left, variable_name) || self.is_variable_used_in_expr(right, variable_name)
+            }
+            Expression::Unary { expr: inner_expr, .. } => self.is_variable_used_in_expr(inner_expr, variable_name),
+            Expression::Call { callee, args } => {
+                self.is_variable_used_in_expr(callee, variable_name)
+                    || args.iter().any(|arg| self.is_variable_used_in_expr(arg, variable_name))
+            }
+            Expression::Member { object, property } => {
+                self.is_variable_used_in_expr(object, variable_name) || self.is_variable_used_in_expr(property, variable_name)
+            }
+            Expression::Index { object, index } => {
+                self.is_variable_used_in_expr(object, variable_name) || self.is_variable_used_in_expr(index, variable_name)
+            }
+            Expression::Assignment { left, right, .. } => {
+                self.is_variable_used_in_expr(left, variable_name) || self.is_variable_used_in_expr(right, variable_name)
+            }
+            Expression::Conditional { test, consequent, alternate } => {
+                self.is_variable_used_in_expr(test, variable_name)
+                    || self.is_variable_used_in_expr(consequent, variable_name)
+                    || self.is_variable_used_in_expr(alternate, variable_name)
+            }
+            _ => false,
+        }
     }
 
     /// 优化语句
@@ -295,9 +832,10 @@ impl Optimizer {
             Statement::VariableDeclaration { name, ty, initializer } => {
                 // 尝试常量传播
                 if let Some(ref init) = initializer {
-                    if let Some(_constant_value) = init.eval() {
-                        // 如果初始化表达式是常量，尝试在后续使用中替换
-                        // 这里可以实现常量传播逻辑
+                    if let Some(constant_value) = init.eval() {
+                        // 如果初始化表达式是常量，创建一个常量变量
+                        // 实际的常量传播需要在整个程序范围内进行
+                        // 这里我们只是标记这个变量是常量
                     }
                 }
                 Statement::VariableDeclaration { name, ty, initializer }
@@ -311,6 +849,19 @@ impl Optimizer {
         // 简单的启发式规则：函数体较小（少于 10 条语句）且没有复杂控制流
         body.len() < 10
             && !body.iter().any(|stmt| matches!(stmt, Statement::If { .. } | Statement::While { .. } | Statement::For { .. }))
+    }
+
+    /// 内联函数调用
+    fn inline_function_call(&self, callee: &Expression, args: &[Expression]) -> Option<Expression> {
+        // 目前只支持简单的函数标识符调用
+        if let Expression::Identifier(name) = callee {
+            // 这里需要查找函数定义，暂时返回 None
+            // 实际实现需要维护函数表
+            None
+        }
+        else {
+            None
+        }
     }
 
     /// 优化表达式
@@ -336,6 +887,48 @@ impl Optimizer {
                     Expression::Binary { left: Box::new(optimized_left), op: op.clone(), right: Box::new(optimized_right) }
                 }
             }
+            Expression::Array(elements) => {
+                let mut optimized_elements = Vec::new();
+                let mut all_constants = true;
+
+                for elem in elements {
+                    let optimized_elem = self.optimize_expression(elem);
+                    optimized_elements.push(optimized_elem.clone());
+                    if optimized_elem.eval().is_none() {
+                        all_constants = false;
+                    }
+                }
+
+                // 如果所有元素都是常量，尝试折叠
+                if all_constants {
+                    if let Some(array_val) = Expression::Array(optimized_elements.clone()).eval() {
+                        return Expression::Literal(array_val);
+                    }
+                }
+
+                Expression::Array(optimized_elements)
+            }
+            Expression::Object(properties) => {
+                let mut optimized_properties = Vec::new();
+                let mut all_constants = true;
+
+                for (key, value) in properties {
+                    let optimized_value = self.optimize_expression(value);
+                    optimized_properties.push((key.clone(), optimized_value.clone()));
+                    if optimized_value.eval().is_none() {
+                        all_constants = false;
+                    }
+                }
+
+                // 如果所有属性值都是常量，尝试折叠
+                if all_constants {
+                    if let Some(object_val) = Expression::Object(optimized_properties.clone()).eval() {
+                        return Expression::Literal(object_val);
+                    }
+                }
+
+                Expression::Object(optimized_properties)
+            }
             Expression::Unary { op, expr: inner_expr } => {
                 let optimized_inner = self.optimize_expression(inner_expr);
 
@@ -352,6 +945,13 @@ impl Optimizer {
                 let mut optimized_args = Vec::new();
                 for arg in args {
                     optimized_args.push(self.optimize_expression(arg));
+                }
+
+                // 尝试函数内联
+                if self.optimization_level == OptimizationLevel::High {
+                    if let Some(inlined_expr) = self.inline_function_call(&optimized_callee, &optimized_args) {
+                        return inlined_expr;
+                    }
                 }
 
                 Expression::Call { callee: Box::new(optimized_callee), args: optimized_args }

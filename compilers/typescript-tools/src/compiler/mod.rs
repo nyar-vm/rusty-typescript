@@ -1,7 +1,8 @@
 /// 编译器模块
 ///
-/// 处理 TypeScript 文件的编译
+/// 处理 TypeScript 文件的编译和执行
 use std::path::PathBuf;
+use typescript::{create_runtime, run_script};
 
 /// 编译选项
 pub struct CompileOptions {
@@ -29,12 +30,33 @@ pub struct CompileResult {
     pub generated_files: Vec<PathBuf>,
 }
 
+/// 执行 TypeScript 脚本
+pub fn execute_script(script: &str) -> Result<String, String> {
+    let mut runtime = create_runtime();
+    match run_script(&mut runtime, script) {
+        Ok(result) => Ok(result),
+        Err(error) => Err(error.to_string()),
+    }
+}
+
+/// 执行 TypeScript 文件
+pub fn execute_file(file: &PathBuf) -> Result<String, String> {
+    use std::fs::read_to_string;
+
+    let content = match read_to_string(file) {
+        Ok(content) => content,
+        Err(e) => return Err(format!("无法读取文件: {}", e)),
+    };
+
+    execute_script(&content)
+}
+
 /// 编译 TypeScript 文件
 pub fn compile_file(file: &PathBuf, _options: &CompileOptions) -> CompileResult {
     use std::fs::read_to_string;
 
-    // 读取文件内容（使用更高效的 read_to_string 函数）
-    let _file_content = match read_to_string(file) {
+    // 读取文件内容
+    let file_content = match read_to_string(file) {
         Ok(content) => content,
         Err(e) => {
             return CompileResult {
@@ -43,8 +65,17 @@ pub fn compile_file(file: &PathBuf, _options: &CompileOptions) -> CompileResult 
         }
     };
 
-    // 模拟编译过程
-    CompileResult { success: true, errors: vec![], generated_files: vec![] }
+    // 尝试执行脚本（作为编译的一部分）
+    match execute_script(&file_content) {
+        Ok(_) => {
+            // 编译成功
+            CompileResult { success: true, errors: vec![], generated_files: vec![] }
+        }
+        Err(e) => {
+            // 编译失败
+            CompileResult { success: false, errors: vec![e], generated_files: vec![] }
+        }
+    }
 }
 
 /// 并行编译多个 TypeScript 文件

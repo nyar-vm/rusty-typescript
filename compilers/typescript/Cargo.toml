@@ -9,15 +9,20 @@ description = "TypeScript compiler and runtime"
 [lib]
 crate-type = ["cdylib", "rlib"]
 
+[[bin]]
+name = "test-performance"
+path = "src/bin/test-performance.rs"
+
 [dependencies]
 typescript-types = { workspace = true }
 typescript-ir = { workspace = true }
-oak-typescript = { workspace = true }
-oak-core = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
 log = { workspace = true }
 env_logger = { workspace = true }
 rand = { workspace = true }
+num_cpus = { workspace = true }
+sha2 = { workspace = true }
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.52", features = ["Win32_Foundation", "Win32_System_LibraryLoader"] }

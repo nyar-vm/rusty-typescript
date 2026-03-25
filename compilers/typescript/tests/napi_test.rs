@@ -61,7 +61,7 @@ fn test_ts_error_other_display() {
 /// 验证 FfiModule 能够正确创建并添加函数
 #[test]
 fn test_ffi_module_creation() {
-    let mut module = FfiModule::new();
+    let mut module = FfiModule::new("test");
     assert!(!module.has_function("test"));
 
     let func: FfiFunction = Arc::new(|_args| Ok(TsValue::Number(42.0)));
@@ -75,7 +75,7 @@ fn test_ffi_module_creation() {
 /// 验证 FfiModule 能够正确调用已注册的函数
 #[test]
 fn test_ffi_module_call_function() {
-    let mut module = FfiModule::new();
+    let mut module = FfiModule::new("test");
 
     let add_func: FfiFunction = Arc::new(|args| {
         let a = args
@@ -115,7 +115,7 @@ fn test_ffi_module_call_function() {
 /// 验证调用不存在的函数时返回正确的错误
 #[test]
 fn test_ffi_module_call_nonexistent_function() {
-    let module = FfiModule::new();
+    let module = FfiModule::new("test");
     let result = module.call_function("nonexistent", &[]);
 
     assert!(result.is_err());
@@ -135,7 +135,7 @@ fn test_ffi_manager_creation() {
     let mut manager = FfiManager::new();
     assert!(manager.get_module("test").is_none());
 
-    let module = FfiModule::new();
+    let module = FfiModule::new("test");
     manager.add_module("test", module);
 
     assert!(manager.get_module("test").is_some());
@@ -147,7 +147,7 @@ fn test_ffi_manager_creation() {
 #[test]
 fn test_ffi_manager_call_function() {
     let mut manager = FfiManager::new();
-    let mut math_module = FfiModule::new();
+    let mut math_module = FfiModule::new("math");
 
     let multiply_func: FfiFunction = Arc::new(|args| {
         let a = args
@@ -445,7 +445,7 @@ fn test_ts_error_debug() {
 /// 验证 FfiModule 能够正确注册和调用多个函数
 #[test]
 fn test_ffi_module_multiple_functions() {
-    let mut module = FfiModule::new();
+    let mut module = FfiModule::new("test");
 
     let add_func: FfiFunction = Arc::new(|args| {
         let a = args
@@ -507,10 +507,10 @@ fn test_ffi_module_multiple_functions() {
 fn test_ffi_manager_multiple_modules() {
     let mut manager = FfiManager::new();
 
-    let mut math_module = FfiModule::new();
+    let mut math_module = FfiModule::new("math");
     math_module.add_function("pi", Arc::new(|_| Ok(TsValue::Number(std::f64::consts::PI))));
 
-    let mut string_module = FfiModule::new();
+    let mut string_module = FfiModule::new("string");
     string_module.add_function("empty", Arc::new(|_| Ok(TsValue::String("".to_string()))));
 
     manager.add_module("math", math_module);

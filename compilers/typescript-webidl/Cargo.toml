@@ -1,0 +1,15 @@
+[package]
+name = "typescript-webidl"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+description = "WebIDL parser and TypeScript converter for Rusty TypeScript"
+
+[dependencies]
+typescript-types = { workspace = true }
+typescript-ir = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+oak-idl = { workspace = true }
+oak-core = { workspace = true }

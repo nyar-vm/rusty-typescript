@@ -1,14 +1,35 @@
 #![warn(missing_docs)]
 
-use oak_typescript::language::TypeScriptLanguage as OakTypeScriptLanguage;
+use std::hash::Hash;
 
 /// TypeScript 语言配置
 ///
-/// 扩展了 oak-typescript 的语言配置，支持更多 TypeScript 语法特性
-pub type TypeScriptLanguage = OakTypeScriptLanguage;
+/// 支持 TypeScript 语法特性
+#[derive(Debug, Clone, Default)]
+pub struct TypeScriptLanguage {
+    /// 支持的 TypeScript 特性
+    pub features: std::collections::HashSet<TypeScriptFeature>,
+}
+
+impl TypeScriptLanguage {
+    /// 创建一个新的 TypeScript 语言配置
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// 添加一个 TypeScript 特性
+    pub fn add_feature(&mut self, feature: TypeScriptFeature) {
+        self.features.insert(feature);
+    }
+
+    /// 检查是否支持某个 TypeScript 特性
+    pub fn supports(&self, feature: TypeScriptFeature) -> bool {
+        self.features.contains(&feature)
+    }
+}
 
 /// TypeScript 语法特性
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TypeScriptFeature {
     /// 类型注解
     TypeAnnotations,

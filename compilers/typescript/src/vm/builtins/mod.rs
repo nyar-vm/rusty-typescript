@@ -1,9 +1,9 @@
 //! builtins 模块
-//!
-use std::collections::HashMap;
-use std::rc::Rc;
+use std::{collections::HashMap, rc::Rc};
 use typescript_types::TsValue;
 
+/// 内置函数和对象
+#[derive(Debug, Clone)]
 pub struct Builtins {
     /// console 对象
     pub console: HashMap<String, TsValue>,
@@ -166,123 +166,15 @@ impl Builtins {
             })),
         );
         math.insert(
-            "floor".to_string(),
+            "acos".to_string(),
             TsValue::Function(Rc::new(|args| {
-                if let Some(TsValue::Number(n)) = args.first() { TsValue::Number(n.floor()) } else { TsValue::Number(f64::NAN) }
-            })),
-        );
-        math.insert(
-            "ceil".to_string(),
-            TsValue::Function(Rc::new(|args| {
-                if let Some(TsValue::Number(n)) = args.first() { TsValue::Number(n.ceil()) } else { TsValue::Number(f64::NAN) }
-            })),
-        );
-        math.insert(
-            "round".to_string(),
-            TsValue::Function(Rc::new(|args| {
-                if let Some(TsValue::Number(n)) = args.first() { TsValue::Number(n.round()) } else { TsValue::Number(f64::NAN) }
-            })),
-        );
-        math.insert(
-            "sqrt".to_string(),
-            TsValue::Function(Rc::new(|args| {
-                if let Some(TsValue::Number(n)) = args.first() { TsValue::Number(n.sqrt()) } else { TsValue::Number(f64::NAN) }
-            })),
-        );
-        math.insert(
-            "cbrt".to_string(),
-            TsValue::Function(Rc::new(|args| {
-                if let Some(TsValue::Number(n)) = args.first() { TsValue::Number(n.cbrt()) } else { TsValue::Number(f64::NAN) }
-            })),
-        );
-        math.insert(
-            "max".to_string(),
-            TsValue::Function(Rc::new(|args| {
-                let max = args
-                    .iter()
-                    .filter_map(|v| match v {
-                        TsValue::Number(n) => Some(*n),
-                        _ => None,
-                    })
-                    .fold(f64::NEG_INFINITY, f64::max);
-                TsValue::Number(max)
-            })),
-        );
-        math.insert(
-            "min".to_string(),
-            TsValue::Function(Rc::new(|args| {
-                let min = args
-                    .iter()
-                    .filter_map(|v| match v {
-                        TsValue::Number(n) => Some(*n),
-                        _ => None,
-                    })
-                    .fold(f64::INFINITY, f64::min);
-                TsValue::Number(min)
-            })),
-        );
-        math.insert(
-            "pow".to_string(),
-            TsValue::Function(Rc::new(|args| {
-                if let (Some(TsValue::Number(base)), Some(TsValue::Number(exp))) = (args.get(0), args.get(1)) {
-                    TsValue::Number(base.powf(*exp))
-                } else {
-                    TsValue::Number(f64::NAN)
-                }
-            })),
-        );
-        math.insert(
-            "exp".to_string(),
-            TsValue::Function(Rc::new(|args| {
-                if let Some(TsValue::Number(n)) = args.first() { TsValue::Number(n.exp()) } else { TsValue::Number(f64::NAN) }
-            })),
-        );
-        math.insert(
-            "log".to_string(),
-            TsValue::Function(Rc::new(|args| {
-                if let Some(TsValue::Number(n)) = args.first() { TsValue::Number(n.ln()) } else { TsValue::Number(f64::NAN) }
-            })),
-        );
-        math.insert(
-            "log10".to_string(),
-            TsValue::Function(Rc::new(|args| {
-                if let Some(TsValue::Number(n)) = args.first() { TsValue::Number(n.log10()) } else { TsValue::Number(f64::NAN) }
-            })),
-        );
-        math.insert(
-            "log2".to_string(),
-            TsValue::Function(Rc::new(|args| {
-                if let Some(TsValue::Number(n)) = args.first() { TsValue::Number(n.log2()) } else { TsValue::Number(f64::NAN) }
-            })),
-        );
-        math.insert(
-            "sin".to_string(),
-            TsValue::Function(Rc::new(|args| {
-                if let Some(TsValue::Number(n)) = args.first() { TsValue::Number(n.sin()) } else { TsValue::Number(f64::NAN) }
-            })),
-        );
-        math.insert(
-            "cos".to_string(),
-            TsValue::Function(Rc::new(|args| {
-                if let Some(TsValue::Number(n)) = args.first() { TsValue::Number(n.cos()) } else { TsValue::Number(f64::NAN) }
-            })),
-        );
-        math.insert(
-            "tan".to_string(),
-            TsValue::Function(Rc::new(|args| {
-                if let Some(TsValue::Number(n)) = args.first() { TsValue::Number(n.tan()) } else { TsValue::Number(f64::NAN) }
+                if let Some(TsValue::Number(n)) = args.first() { TsValue::Number(n.acos()) } else { TsValue::Number(f64::NAN) }
             })),
         );
         math.insert(
             "asin".to_string(),
             TsValue::Function(Rc::new(|args| {
                 if let Some(TsValue::Number(n)) = args.first() { TsValue::Number(n.asin()) } else { TsValue::Number(f64::NAN) }
-            })),
-        );
-        math.insert(
-            "acos".to_string(),
-            TsValue::Function(Rc::new(|args| {
-                if let Some(TsValue::Number(n)) = args.first() { TsValue::Number(n.acos()) } else { TsValue::Number(f64::NAN) }
             })),
         );
         math.insert(
@@ -296,48 +188,124 @@ impl Builtins {
             TsValue::Function(Rc::new(|args| {
                 if let (Some(TsValue::Number(y)), Some(TsValue::Number(x))) = (args.get(0), args.get(1)) {
                     TsValue::Number(y.atan2(*x))
-                } else {
+                }
+                else {
                     TsValue::Number(f64::NAN)
                 }
             })),
         );
         math.insert(
-            "sinh".to_string(),
+            "ceil".to_string(),
             TsValue::Function(Rc::new(|args| {
-                if let Some(TsValue::Number(n)) = args.first() { TsValue::Number(n.sinh()) } else { TsValue::Number(f64::NAN) }
+                if let Some(TsValue::Number(n)) = args.first() { TsValue::Number(n.ceil()) } else { TsValue::Number(f64::NAN) }
             })),
         );
         math.insert(
-            "cosh".to_string(),
+            "cos".to_string(),
             TsValue::Function(Rc::new(|args| {
-                if let Some(TsValue::Number(n)) = args.first() { TsValue::Number(n.cosh()) } else { TsValue::Number(f64::NAN) }
+                if let Some(TsValue::Number(n)) = args.first() { TsValue::Number(n.cos()) } else { TsValue::Number(f64::NAN) }
             })),
         );
         math.insert(
-            "tanh".to_string(),
+            "exp".to_string(),
             TsValue::Function(Rc::new(|args| {
-                if let Some(TsValue::Number(n)) = args.first() { TsValue::Number(n.tanh()) } else { TsValue::Number(f64::NAN) }
+                if let Some(TsValue::Number(n)) = args.first() { TsValue::Number(n.exp()) } else { TsValue::Number(f64::NAN) }
             })),
         );
-        math.insert("random".to_string(), TsValue::Function(Rc::new(|_| TsValue::Number(rand::random::<f64>()))));
+        math.insert(
+            "floor".to_string(),
+            TsValue::Function(Rc::new(|args| {
+                if let Some(TsValue::Number(n)) = args.first() { TsValue::Number(n.floor()) } else { TsValue::Number(f64::NAN) }
+            })),
+        );
+        math.insert(
+            "log".to_string(),
+            TsValue::Function(Rc::new(|args| {
+                if let Some(TsValue::Number(n)) = args.first() { TsValue::Number(n.ln()) } else { TsValue::Number(f64::NAN) }
+            })),
+        );
+        math.insert(
+            "max".to_string(),
+            TsValue::Function(Rc::new(|args| {
+                let mut max = f64::NEG_INFINITY;
+                for arg in args.iter() {
+                    if let TsValue::Number(n) = arg {
+                        if *n > max {
+                            max = *n;
+                        }
+                    }
+                }
+                TsValue::Number(max)
+            })),
+        );
+        math.insert(
+            "min".to_string(),
+            TsValue::Function(Rc::new(|args| {
+                let mut min = f64::INFINITY;
+                for arg in args.iter() {
+                    if let TsValue::Number(n) = arg {
+                        if *n < min {
+                            min = *n;
+                        }
+                    }
+                }
+                TsValue::Number(min)
+            })),
+        );
+        math.insert(
+            "pow".to_string(),
+            TsValue::Function(Rc::new(|args| {
+                if let (Some(TsValue::Number(base)), Some(TsValue::Number(exp))) = (args.get(0), args.get(1)) {
+                    TsValue::Number(base.powf(*exp))
+                }
+                else {
+                    TsValue::Number(f64::NAN)
+                }
+            })),
+        );
+        math.insert("random".to_string(), TsValue::Function(Rc::new(|_| TsValue::Number(rand::random()))));
+        math.insert(
+            "round".to_string(),
+            TsValue::Function(Rc::new(|args| {
+                if let Some(TsValue::Number(n)) = args.first() { TsValue::Number(n.round()) } else { TsValue::Number(f64::NAN) }
+            })),
+        );
+        math.insert(
+            "sin".to_string(),
+            TsValue::Function(Rc::new(|args| {
+                if let Some(TsValue::Number(n)) = args.first() { TsValue::Number(n.sin()) } else { TsValue::Number(f64::NAN) }
+            })),
+        );
+        math.insert(
+            "sqrt".to_string(),
+            TsValue::Function(Rc::new(|args| {
+                if let Some(TsValue::Number(n)) = args.first() { TsValue::Number(n.sqrt()) } else { TsValue::Number(f64::NAN) }
+            })),
+        );
+        math.insert(
+            "tan".to_string(),
+            TsValue::Function(Rc::new(|args| {
+                if let Some(TsValue::Number(n)) = args.first() { TsValue::Number(n.tan()) } else { TsValue::Number(f64::NAN) }
+            })),
+        );
 
         let mut json = HashMap::new();
         json.insert(
             "parse".to_string(),
             TsValue::Function(Rc::new(|args| {
-                if let Some(TsValue::String(s)) = args.first() {
-                    // 简化实现，实际应该解析 JSON
-                    TsValue::Object(vec![("parsed".to_string(), TsValue::String(s.clone()))])
+                if let Some(TsValue::String(_s)) = args.first() {
+                    // 简化的 JSON 解析
+                    TsValue::Object(std::collections::HashMap::new())
                 }
                 else {
-                    TsValue::Error("JSON.parse expects a string".to_string())
+                    TsValue::Undefined
                 }
             })),
         );
         json.insert(
             "stringify".to_string(),
             TsValue::Function(Rc::new(|args| {
-                if let Some(value) = args.first() { TsValue::String(value.to_string()) } else { TsValue::Undefined }
+                if let Some(arg) = args.first() { TsValue::String(arg.to_string()) } else { TsValue::Undefined }
             })),
         );
 
@@ -346,60 +314,85 @@ impl Builtins {
             math,
             json,
             date_constructor: TsValue::Function(Rc::new(|args| {
-                if let Some(TsValue::Number(timestamp)) = args.first() {
-                    TsValue::Date(*timestamp as i64)
-                } else {
-                    TsValue::Date(std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as i64)
+                if let Some(TsValue::Number(_timestamp)) = args.first() {
+                    TsValue::Object(std::collections::HashMap::new())
+                }
+                else {
+                    TsValue::Object(std::collections::HashMap::new())
                 }
             })),
             regexp_constructor: TsValue::Function(Rc::new(|args| {
-                if let Some(TsValue::String(pattern)) = args.first() {
-                    TsValue::RegExp(pattern.clone())
-                } else {
-                    TsValue::RegExp(String::new())
+                if let (Some(TsValue::String(_pattern)), Some(TsValue::String(_flags))) = (args.get(0), args.get(1)) {
+                    TsValue::Object(std::collections::HashMap::new())
                 }
-            })),
-            map_constructor: TsValue::Function(Rc::new(|args| {
-                TsValue::Map(vec![])
-            })),
-            set_constructor: TsValue::Function(Rc::new(|args| {
-                TsValue::Set(vec![])
-            })),
-            array_constructor: TsValue::Function(Rc::new(|args| TsValue::Array(args.to_vec()))),
-            object_constructor: TsValue::Function(Rc::new(|args| {
-                if let Some(TsValue::Object(props)) = args.first() {
-                    TsValue::Object(props.clone())
+                else if let Some(TsValue::String(_pattern)) = args.first() {
+                    TsValue::Object(std::collections::HashMap::new())
                 }
                 else {
-                    TsValue::Object(vec![])
+                    TsValue::Object(std::collections::HashMap::new())
+                }
+            })),
+            map_constructor: TsValue::Function(Rc::new(|args| TsValue::Object(std::collections::HashMap::new()))),
+            set_constructor: TsValue::Function(Rc::new(|args| TsValue::Object(std::collections::HashMap::new()))),
+            array_constructor: TsValue::Function(Rc::new(|args| {
+                if let Some(TsValue::Number(len)) = args.first() {
+                    TsValue::Array(Vec::with_capacity(*len as usize))
+                }
+                else {
+                    TsValue::Array(args.to_vec())
+                }
+            })),
+            object_constructor: TsValue::Function(Rc::new(|args| {
+                if let Some(TsValue::Object(obj)) = args.first() {
+                    TsValue::Object(obj.clone())
+                }
+                else {
+                    TsValue::Object(std::collections::HashMap::new())
                 }
             })),
             string_constructor: TsValue::Function(Rc::new(|args| {
                 if let Some(arg) = args.first() { TsValue::String(arg.to_string()) } else { TsValue::String(String::new()) }
             })),
             number_constructor: TsValue::Function(Rc::new(|args| {
-                if let Some(arg) = args.first() { TsValue::Number(arg.to_number()) } else { TsValue::Number(0.0) }
+                if let Some(arg) = args.first() {
+                    if let TsValue::String(s) = arg {
+                        TsValue::Number(s.parse().unwrap_or(f64::NAN))
+                    }
+                    else if let TsValue::Number(n) = arg {
+                        TsValue::Number(*n)
+                    }
+                    else {
+                        TsValue::Number(f64::NAN)
+                    }
+                }
+                else {
+                    TsValue::Number(0.0)
+                }
             })),
             boolean_constructor: TsValue::Function(Rc::new(|args| {
                 if let Some(arg) = args.first() { TsValue::Boolean(arg.to_boolean()) } else { TsValue::Boolean(false) }
             })),
             symbol_constructor: TsValue::Function(Rc::new(|args| {
-                if let Some(TsValue::String(desc)) = args.first() {
-                    TsValue::Symbol(desc.clone())
-                } else {
+                if let Some(TsValue::String(description)) = args.first() {
+                    TsValue::Symbol(description.clone())
+                }
+                else {
                     TsValue::Symbol(String::new())
                 }
             })),
             bigint_constructor: TsValue::Function(Rc::new(|args| {
-                if let Some(TsValue::Number(n)) = args.first() {
-                    TsValue::BigInt(*n as i128)
-                } else if let Some(TsValue::String(s)) = args.first() {
-                    if let Ok(bi) = s.parse::<i128>() {
-                        TsValue::BigInt(bi)
-                    } else {
+                if let Some(arg) = args.first() {
+                    if let TsValue::String(s) = arg {
+                        if let Ok(n) = s.parse::<i128>() { TsValue::BigInt(n) } else { TsValue::BigInt(0) }
+                    }
+                    else if let TsValue::Number(n) = arg {
+                        TsValue::BigInt(*n as i128)
+                    }
+                    else {
                         TsValue::BigInt(0)
                     }
-                } else {
+                }
+                else {
                     TsValue::BigInt(0)
                 }
             })),
@@ -427,6 +420,3 @@ impl Default for Builtins {
         Self::new()
     }
 }
-
-/// 性能监控
-#[derive(Debug, Clone)]

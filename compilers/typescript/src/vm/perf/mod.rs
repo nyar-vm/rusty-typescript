@@ -1,5 +1,4 @@
 //! perf 模块
-//!
 pub struct PerformanceMonitor {
     /// 指令执行计数
     pub instruction_count: usize,
@@ -131,12 +130,8 @@ impl PerformanceMonitor {
     /// 获取报告
     pub fn report(&self) -> String {
         let elapsed = self.elapsed_us();
-        let instructions_per_us = if elapsed > 0 {
-            self.instruction_count as f64 / elapsed as f64
-        } else {
-            0.0
-        };
-        
+        let instructions_per_us = if elapsed > 0 { self.instruction_count as f64 / elapsed as f64 } else { 0.0 };
+
         format!(
             "Performance Report:\n\
              - Instructions executed: {}\n\

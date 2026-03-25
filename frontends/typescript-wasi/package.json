@@ -3,8 +3,16 @@
     "version": "0.1.0",
     "private": true,
     "type": "module",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+        ".": {
+            "import": "./dist/index.js",
+            "types": "./dist/index.d.ts"
+        }
+    },
     "scripts": {
-        "build": "tsc",
+        "build": "tsc && npx --no-install jco transpile ../../target/wasm32-wasip2/release/typescript_wasi.wasm --out-dir lib --name typescriptWasi",
         "dev": "tsc --watch"
     },
     "devDependencies": {

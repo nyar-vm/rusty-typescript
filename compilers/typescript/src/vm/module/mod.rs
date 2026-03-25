@@ -1,8 +1,9 @@
 //! module 模块
-//!
 use std::collections::HashMap;
 use typescript_types::TsValue;
 
+/// 模块实例
+#[derive(Debug, Clone)]
 pub struct ModuleInstance {
     /// 模块名
     pub name: String,
@@ -28,6 +29,3 @@ impl ModuleInstance {
         self.exports.get(name)
     }
 }
-
-/// 函数
-#[derive(Debug, Clone)]

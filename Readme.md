@@ -49,7 +49,9 @@ cargo build --release
 pnpm build
 ```
 
-### Usage Example
+### Usage Examples
+
+#### Basic Usage
 
 ```rust
 use typescript::TypeScript;
@@ -69,6 +71,68 @@ fn main() {
         Ok(value) => println!("✅ Execution successful: {}", value),
         Err(e) => println!("❌ Execution failed: {}", e),
     }
+}
+```
+
+#### Advanced Usage with Modules
+
+```rust
+use typescript::TypeScript;
+
+fn main() {
+    let mut ts = TypeScript::new();
+    
+    // Import modules
+    ts.import_module("fs", None).unwrap();
+    ts.import_module("path", Some("p")).unwrap();
+    
+    // Execute TypeScript code with modules
+    let result = ts.execute_script(r#"
+        import * as fs from 'fs';
+        import * as p from 'path';
+        
+        const currentPath: string = p.resolve('.');
+        console.log('Current path:', currentPath);
+        currentPath
+    "#);
+    
+    match result {
+        Ok(value) => println!("✅ Execution successful: {}", value),
+        Err(e) => println!("❌ Execution failed: {}", e),
+    }
+}
+```
+
+#### Performance Monitoring
+
+```rust
+use typescript::TypeScript;
+
+fn main() {
+    let mut ts = TypeScript::new();
+    
+    // Enable performance monitoring
+    ts.enable_performance_monitoring();
+    
+    // Execute performance-intensive code
+    let result = ts.execute_script(r#"
+        function fibonacci(n: number): number {
+            if (n <= 1) return n;
+            return fibonacci(n - 1) + fibonacci(n - 2);
+        }
+        
+        console.log('Fibonacci(40):', fibonacci(40));
+        'Done'
+    "#);
+    
+    match result {
+        Ok(value) => println!("✅ Execution successful: {}", value),
+        Err(e) => println!("❌ Execution failed: {}", e),
+    }
+    
+    // Get performance report
+    let report = ts.get_performance_report();
+    println!("\n📊 Performance Report:\n{}", report);
 }
 ```
 

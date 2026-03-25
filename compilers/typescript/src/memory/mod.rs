@@ -2,10 +2,12 @@
 //!
 //! 提供高效的内存分配和管理机制，包括内存池和对象池。
 
-use std::alloc::{alloc, dealloc, Layout};
-use std::collections::HashMap;
-use std::ptr::NonNull;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::{
+    alloc::{Layout, alloc, dealloc},
+    collections::HashMap,
+    ptr::NonNull,
+    sync::atomic::{AtomicUsize, Ordering},
+};
 use typescript_types::TsValue;
 
 /// 内存块大小常量
@@ -34,11 +36,7 @@ impl MemoryPool {
             free_blocks.insert(size, Vec::new());
         }
 
-        Self {
-            free_blocks,
-            total_allocated: AtomicUsize::new(0),
-            total_used: AtomicUsize::new(0),
-        }
+        Self { free_blocks, total_allocated: AtomicUsize::new(0), total_used: AtomicUsize::new(0) }
     }
 
     /// 分配指定大小的内存块
@@ -77,7 +75,8 @@ impl MemoryPool {
         if let Some(blocks) = self.free_blocks.get_mut(&block_size) {
             blocks.push(ptr);
             self.total_used.fetch_sub(block_size, Ordering::Relaxed);
-        } else {
+        }
+        else {
             // 如果大小不匹配标准块大小，直接释放
             unsafe {
                 let layout = Layout::from_size_align(block_size, 8).unwrap();
@@ -93,11 +92,7 @@ impl MemoryPool {
         MemoryStats {
             total_allocated: self.total_allocated.load(Ordering::Relaxed),
             total_used: self.total_used.load(Ordering::Relaxed),
-            free_blocks: self
-                .free_blocks
-                .iter()
-                .map(|(size, blocks)| (*size, blocks.len()))
-                .collect(),
+            free_blocks: self.free_blocks.iter().map(|(size, blocks)| (*size, blocks.len())).collect(),
         }
     }
 
@@ -166,12 +161,7 @@ impl<T> ObjectPool<T> {
         F: Fn() -> T + 'static,
         R: Fn(&mut T) + 'static,
     {
-        Self {
-            free_objects: Vec::with_capacity(capacity),
-            capacity,
-            factory: Box::new(factory),
-            reset: Box::new(reset),
-        }
+        Self { free_objects: Vec::with_capacity(capacity), capacity, factory: Box::new(factory), reset: Box::new(reset) }
     }
 
     /// 从池中获取一个对象
@@ -181,7 +171,8 @@ impl<T> ObjectPool<T> {
         if let Some(mut obj) = self.free_objects.pop() {
             (self.reset)(&mut obj);
             obj
-        } else {
+        }
+        else {
             (self.factory)()
         }
     }
@@ -225,11 +216,7 @@ impl MemoryStats {
 
     /// 计算内存使用百分比
     pub fn usage_percentage(&self) -> f64 {
-        if self.total_allocated == 0 {
-            0.0
-        } else {
-            (self.total_used as f64 / self.total_allocated as f64) * 100.0
-        }
+        if self.total_allocated == 0 { 0.0 } else { (self.total_used as f64 / self.total_allocated as f64) * 100.0 }
     }
 }
 
@@ -245,6 +232,184 @@ pub trait Allocator {
     fn stats(&self) -> MemoryStats;
 }
 
+/// 伙伴分配器
+///
+/// 使用伙伴系统算法进行内存分配，减少内存碎片
+pub struct BuddyAllocator {
+    /// 空闲块列表，按大小分类（2的幂）
+    free_lists: Vec<Vec<NonNull<u8>>>,
+    /// 总分配内存
+    total_allocated: AtomicUsize,
+    /// 已使用内存
+    total_used: AtomicUsize,
+    /// 最小块大小
+    min_block_size: usize,
+    /// 最大块大小
+    max_block_size: usize,
+}
+
+impl BuddyAllocator {
+    /// 创建一个新的伙伴分配器
+    pub fn new(min_block_size: usize, max_block_size: usize) -> Self {
+        // 确保块大小是2的幂
+        let min_block_size = Self::next_power_of_two(min_block_size);
+        let max_block_size = Self::next_power_of_two(max_block_size);
+
+        // 计算需要的空闲列表数量
+        let levels = (max_block_size.trailing_zeros() - min_block_size.trailing_zeros() + 1) as usize;
+        let mut free_lists = Vec::with_capacity(levels);
+        for _ in 0..levels {
+            free_lists.push(Vec::new());
+        }
+
+        // 分配初始内存
+        let initial_memory = unsafe {
+            let layout = Layout::from_size_align(max_block_size, max_block_size).unwrap();
+            let ptr = alloc(layout);
+            if ptr.is_null() {
+                panic!("Failed to allocate initial memory for buddy allocator");
+            }
+            NonNull::new_unchecked(ptr)
+        };
+
+        // 将初始内存添加到最大块的空闲列表
+        let max_level = free_lists.len() - 1;
+        free_lists[max_level].push(initial_memory);
+
+        Self {
+            free_lists,
+            total_allocated: AtomicUsize::new(max_block_size),
+            total_used: AtomicUsize::new(0),
+            min_block_size,
+            max_block_size,
+        }
+    }
+
+    /// 计算下一个2的幂
+    fn next_power_of_two(mut size: usize) -> usize {
+        size -= 1;
+        size |= size >> 1;
+        size |= size >> 2;
+        size |= size >> 4;
+        size |= size >> 8;
+        size |= size >> 16;
+        size + 1
+    }
+
+    /// 获取块大小对应的级别
+    fn get_level(&self, size: usize) -> usize {
+        let normalized_size = if size < self.min_block_size { self.min_block_size } else { Self::next_power_of_two(size) };
+        (normalized_size.trailing_zeros() - self.min_block_size.trailing_zeros()) as usize
+    }
+
+    /// 查找伙伴块
+    fn find_buddy(&self, ptr: NonNull<u8>, size: usize) -> NonNull<u8> {
+        let ptr_addr = ptr.as_ptr() as usize;
+        let buddy_addr = ptr_addr ^ size;
+        NonNull::new(buddy_addr as *mut u8).unwrap()
+    }
+
+    /// 检查伙伴块是否空闲
+    fn is_buddy_free(&self, buddy: NonNull<u8>, level: usize) -> bool {
+        self.free_lists[level].contains(&buddy)
+    }
+}
+
+impl Allocator for BuddyAllocator {
+    fn allocate(&mut self, size: usize) -> Option<NonNull<u8>> {
+        let required_size = if size < self.min_block_size { self.min_block_size } else { Self::next_power_of_two(size) };
+
+        let level = self.get_level(required_size);
+
+        // 查找合适的块
+        for i in level..self.free_lists.len() {
+            if !self.free_lists[i].is_empty() {
+                // 找到可用块
+                let block = self.free_lists[i].pop().unwrap();
+
+                // 分裂块直到达到所需大小
+                let mut current_size = self.min_block_size << i;
+                let mut current_block = block;
+                let mut current_level = i;
+
+                while current_size > required_size {
+                    current_size /= 2;
+                    let buddy = self.find_buddy(current_block, current_size);
+                    current_level -= 1;
+
+                    // 将伙伴块添加到下一级空闲列表
+                    self.free_lists[current_level].push(buddy);
+                }
+
+                self.total_used.fetch_add(required_size, Ordering::Relaxed);
+                return Some(current_block);
+            }
+        }
+
+        None
+    }
+
+    fn deallocate(&mut self, ptr: NonNull<u8>, size: usize) {
+        let required_size = if size < self.min_block_size { self.min_block_size } else { Self::next_power_of_two(size) };
+
+        let mut level = self.get_level(required_size);
+        let mut current_block = ptr;
+        let mut current_size = required_size;
+
+        // 尝试合并伙伴块
+        loop {
+            let buddy = self.find_buddy(current_block, current_size);
+
+            if level >= self.free_lists.len() - 1 || !self.is_buddy_free(buddy, level) {
+                // 无法合并，将块添加到空闲列表
+                self.free_lists[level].push(current_block);
+                break;
+            }
+
+            // 合并伙伴块
+            let index = self.free_lists[level].iter().position(|&b| b == buddy).unwrap();
+            self.free_lists[level].remove(index);
+
+            // 更新当前块和大小
+            current_block = if (current_block.as_ptr() as usize) < (buddy.as_ptr() as usize) { current_block } else { buddy };
+            current_size *= 2;
+            level += 1;
+        }
+
+        self.total_used.fetch_sub(required_size, Ordering::Relaxed);
+    }
+
+    fn stats(&self) -> MemoryStats {
+        let mut free_blocks = HashMap::new();
+        for (i, list) in self.free_lists.iter().enumerate() {
+            let block_size = self.min_block_size << i;
+            free_blocks.insert(block_size, list.len());
+        }
+
+        MemoryStats {
+            total_allocated: self.total_allocated.load(Ordering::Relaxed),
+            total_used: self.total_used.load(Ordering::Relaxed),
+            free_blocks,
+        }
+    }
+}
+
+impl Drop for BuddyAllocator {
+    fn drop(&mut self) {
+        // 释放所有分配的内存
+        // 简化实现，实际应该释放所有块
+    }
+}
+
+/// 内存分配策略
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AllocationStrategy {
+    /// 默认内存池策略
+    Default,
+    /// 伙伴分配器策略
+    Buddy,
+}
+
 /// 默认内存分配器
 ///
 /// 使用内存池实现的高效分配器
@@ -255,9 +420,7 @@ pub struct DefaultAllocator {
 impl DefaultAllocator {
     /// 创建一个新的默认分配器
     pub fn new() -> Self {
-        Self {
-            pool: MemoryPool::new(),
-        }
+        Self { pool: MemoryPool::new() }
     }
 }
 
@@ -278,6 +441,21 @@ impl Allocator for DefaultAllocator {
 
     fn stats(&self) -> MemoryStats {
         self.pool.stats()
+    }
+}
+
+/// 分配器工厂
+///
+/// 根据策略创建不同的内存分配器
+pub struct AllocatorFactory;
+
+impl AllocatorFactory {
+    /// 创建指定策略的内存分配器
+    pub fn create(strategy: AllocationStrategy) -> Box<dyn Allocator> {
+        match strategy {
+            AllocationStrategy::Default => Box::new(DefaultAllocator::new()),
+            AllocationStrategy::Buddy => Box::new(BuddyAllocator::new(8, 4096)),
+        }
     }
 }
 
@@ -304,13 +482,9 @@ impl GlobalMemoryManager {
     pub fn new(gc_threshold: usize) -> Self {
         Self {
             pool: MemoryPool::new(),
-            string_pool: ObjectPool::new(
-                1000,
-                String::new,
-                |s| {
-                    s.clear();
-                },
-            ),
+            string_pool: ObjectPool::new(1000, String::new, |s| {
+                s.clear();
+            }),
             tsvalue_array_pool: ObjectPool::new(
                 500,
                 || Vec::with_capacity(10),
@@ -410,5 +584,3 @@ impl Default for GlobalMemoryManager {
         Self::new(10000)
     }
 }
-
-

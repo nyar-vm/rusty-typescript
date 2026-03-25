@@ -1,9 +1,10 @@
 //! function 模块
-//!
+use crate::codegen::Instruction;
 use std::collections::HashMap;
 use typescript_types::TsValue;
-use crate::codegen::Instruction;
 
+/// 函数
+#[derive(Debug, Clone)]
 pub struct Function {
     /// 函数名
     pub name: String,
@@ -23,6 +24,3 @@ impl Function {
         Self { name, param_count, body, locals: Vec::new(), captures: HashMap::new() }
     }
 }
-
-/// 内置函数和对象
-#[derive(Debug, Clone)]

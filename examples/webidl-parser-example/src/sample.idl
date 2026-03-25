@@ -1,0 +1,49 @@
+// 示例 WebIDL 文件
+// 这个文件展示了各种 WebIDL 类型和结构
+
+// 基本接口
+interface Person {
+    attribute DOMString name;
+    attribute unsigned long age;
+    void greet();
+    DOMString getName();
+}
+
+// 字典类型
+dictionary Address {
+    DOMString street;
+    DOMString city;
+    DOMString country;
+    unsigned long postalCode;
+}
+
+// 枚举类型
+enum UserRole {
+    "admin",
+    "user",
+    "guest"
+}
+
+// 包含静态方法的接口
+interface MathUtils {
+    static long add(long a, long b);
+    static long multiply(long a, long b);
+    double divide(double a, double b);
+}
+
+// 包含联合类型的字典
+dictionary User {
+    DOMString name;
+    unsigned long age;
+    UserRole role;
+    Address address;
+    (DOMString or long)? id;
+}
+
+// 类型定义
+typedef sequence<DOMString> StringList;
+typedef long Integer;
+
+// 常量
+const unsigned long MAX_USERS = 1000;
+const DOMString API_VERSION = "1.0";

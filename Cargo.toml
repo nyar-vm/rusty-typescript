@@ -2,57 +2,54 @@
 resolver = "3"
 members = [
     "compilers/*",
+    "examples/basic_types",
 ]
 default-members = [
-    "compilers/typescript-types",
-    "compilers/typescript-ir",
-    "compilers/typescript",
-    "compilers/typescript-lsp",
+    "compilers/*",
 ]
 
 [workspace.package]
-name = "rusty-typescript"
-version = "0.0.0"
+version = "0.0.1"
 edition = "2024"
 authors = ["Rusty TypeScript Team"]
-description = "Rusty TypeScript compiler and toolchain"
+description = "Rusty TypeScript - A high-performance TypeScript compiler written in Rust"
 license = "MIT"
-repository = "https://github.com/nyar-vm/rusty-typescript"
-homepage = "https://github.com/nyar-vm/rusty-typescript"
+repository = "https://github.com/rusty-typescript/rusty-typescript.git"
+homepage = "https://github.com/rusty-typescript/rusty-typescript.git"
 
 [workspace.dependencies]
-# 共享依赖
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-
 log = "0.4"
-env_logger = "0.10"
-futures = "0.3"
-tokio = { version = "1", features = ["full"] }
-proc-macro2 = "1.0"
-quote = "1.0"
-syn = { version = "2.0", features = ["full", "derive", "extra-traits"] }
-clap = { version = "4.5.0", features = ["derive", "env"] }
-toml = "0.8.14"
-walkdir = "2.5.0"
-pathdiff = "0.2.1"
-num_cpus = "1.16.0"
-rayon = "1.10.0"
-winapi = { version = "0.3.9", features = ["handleapi", "processenv", "winbase"] }
-libc = "0.2.155"
-napi = { version = "2", features = ["async", "napi8"] }
-napi-derive = "2"
+env_logger = "0.11"
 rand = "0.8"
-napi-build = "2"
+futures = "0.3"
+tokio = { version = "1.0", features = ["full"] }
+tower-lsp = "0.20"
+proc-macro2 = "1.0"
+syn = "2.0"
+quote = "1.0"
+clap = { version = "4.0", features = ["derive"] }
+num_cpus = "1.16.0"
+sha2 = "0.10.8"
+pathdiff = "0.2.1"
+rayon = "1.8.0"
+toml = "0.7.0"
+walkdir = "2.4.0"
+libc = "0.2.0"
+winapi = { version = "0.3.9", features = ["winbase", "winnt", "fileapi", "handleapi", "processenv"] }
+once_cell = "1.18.0"
+lsp-types = "0.94.0"
+regex = "1.10.3"
 
-# 项目内部依赖
-typescript-types = { path = "compilers/typescript-types", version = "0.0.0" }
-typescript-ir = { path = "compilers/typescript-ir", version = "0.0.0" }
-typescript = { path = "compilers/typescript", version = "0.0.0" }
+typescript = { path = "compilers/typescript" }
+typescript-types = { path = "compilers/typescript-types" }
+typescript-ir = { path = "compilers/typescript-ir" }
+typescript-webidl = { path = "compilers/typescript-webidl" }
 
-# oak 依赖
-oak-typescript = { git = "https://github.com/ygg-lang/oaks.git", branch = "dev", version = "0.0.10" }
-oak-core = { git = "https://github.com/ygg-lang/oaks.git", branch = "dev", version = "0.0.10" }
-oak-lsp = { git = "https://github.com/ygg-lang/oaks.git", branch = "dev", version = "0.0.10" }
-oak-mcp = { git = "https://github.com/ygg-lang/oaks.git", branch = "dev", version = "0.0.10" }
-oak-vfs = { git = "https://github.com/ygg-lang/oaks.git", branch = "dev", version = "0.0.10" }
+oak-typescript = { git = "https://github.com/ygg-lang/oaks.git", version = "0.0.3" }
+oak-core = { git = "https://github.com/ygg-lang/oaks.git", version = "0.0.3" }
+oak-lsp = { git = "https://github.com/ygg-lang/oaks.git", version = "0.0.3" }
+oak-mcp = { git = "https://github.com/ygg-lang/oaks.git", version = "0.0.3" }
+oak-vfs = { git = "https://github.com/ygg-lang/oaks.git", version = "0.0.3" }
+oak-idl = { git = "https://github.com/ygg-lang/oaks.git", version = "0.0.3" }

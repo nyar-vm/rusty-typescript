@@ -1,0 +1,10 @@
+[package]
+name = "test-webidl"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+description = "Test WebIDL parsing and conversion"
+
+[dependencies]
+typescript-webidl = { workspace = true }

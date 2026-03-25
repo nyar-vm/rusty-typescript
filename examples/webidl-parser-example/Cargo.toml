@@ -1,0 +1,10 @@
+[package]
+name = "webidl-parser-example"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+description = "WebIDL parser example"
+
+[dependencies]
+typescript-webidl = { workspace = true }

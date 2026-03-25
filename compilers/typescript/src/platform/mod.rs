@@ -1,11 +1,11 @@
 //! 平台检测与兼容性模块
-//! 
+//!
 //! 提供跨平台的类型定义、内存对齐工具和平台信息查询功能。
 
 /// 跨平台动态库加载模块
 pub mod dylib;
 
-pub use dylib::{DynamicLibrary, DylibError, Symbol, build_dylib_name, get_dylib_extension, get_dylib_prefix};
+pub use dylib::{DylibError, DynamicLibrary, Symbol, build_dylib_name, get_dylib_extension, get_dylib_prefix};
 
 /// 检测是否为 Windows 平台
 ///
@@ -234,7 +234,13 @@ impl PlatformInfo {
         {
             "NetBSD".to_string()
         }
-        #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux", target_os = "freebsd", target_os = "netbsd")))]
+        #[cfg(not(any(
+            target_os = "windows",
+            target_os = "macos",
+            target_os = "linux",
+            target_os = "freebsd",
+            target_os = "netbsd"
+        )))]
         {
             "Unknown".to_string()
         }
@@ -274,7 +280,13 @@ impl PlatformInfo {
         {
             OsType::Netbsd
         }
-        #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux", target_os = "freebsd", target_os = "netbsd")))]
+        #[cfg(not(any(
+            target_os = "windows",
+            target_os = "macos",
+            target_os = "linux",
+            target_os = "freebsd",
+            target_os = "netbsd"
+        )))]
         {
             OsType::Unknown
         }
@@ -306,7 +318,14 @@ impl PlatformInfo {
         {
             Arch::Riscv32
         }
-        #[cfg(not(any(target_arch = "x86_64", target_arch = "x86", target_arch = "aarch64", target_arch = "arm", target_arch = "riscv64", target_arch = "riscv32")))]
+        #[cfg(not(any(
+            target_arch = "x86_64",
+            target_arch = "x86",
+            target_arch = "aarch64",
+            target_arch = "arm",
+            target_arch = "riscv64",
+            target_arch = "riscv32"
+        )))]
         {
             Arch::Unknown
         }
@@ -408,5 +427,3 @@ pub enum Arch {
     /// 未知架构
     Unknown,
 }
-
-

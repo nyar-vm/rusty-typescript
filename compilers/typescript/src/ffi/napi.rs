@@ -3,8 +3,10 @@
 //! 提供加载 NAPI 扩展模块（.node 文件）的功能。
 //! 支持跨平台动态库加载，解析 NAPI 导出，类型转换等功能。
 
-use std::collections::HashMap;
-use std::ffi::{c_void, CString};
+use std::{
+    collections::HashMap,
+    ffi::{CString, c_char, c_void},
+};
 use typescript_types::{TsError, TsValue};
 
 use crate::platform::dylib::{DynamicLibrary, Symbol};
@@ -143,13 +145,12 @@ impl NapiModuleLoader {
         }
 
         // 加载动态库
-        let library = DynamicLibrary::open(path).map_err(|e| TsError::Other(format!("Failed to load module '{}': {}", name, e)))?;
+        let library =
+            DynamicLibrary::open(path).map_err(|e| TsError::Other(format!("Failed to load module '{}': {}", name, e)))?;
 
         // 查找 NAPI 模块注册符号
-        let napi_module_ptr: Symbol<*const NapiModule> = unsafe {
-            library.get("napi_module")
-                .map_err(|e| TsError::Other(format!("Failed to find napi_module symbol: {}", e)))?
-        };
+        let napi_module_ptr: Symbol<*const NapiModule> =
+            library.get("napi_module").map_err(|e| TsError::Other(format!("Failed to find napi_module symbol: {}", e)))?;
 
         let napi_module = unsafe { &**napi_module_ptr };
 
@@ -160,19 +161,15 @@ impl NapiModuleLoader {
         let exports = if let Some(register_func) = napi_module.nm_register_func {
             let exports = NapiValue(std::ptr::null_mut());
             register_func(env, exports)
-        } else {
+        }
+        else {
             NapiValue(std::ptr::null_mut())
         };
 
         // 解析导出项
         let exports_map = self.parse_exports(env, exports)?;
 
-        let loaded_module = LoadedNapiModule {
-            name: name.to_string(),
-            path: path.to_string(),
-            library,
-            exports: exports_map,
-        };
+        let loaded_module = LoadedNapiModule { name: name.to_string(), path: path.to_string(), library, exports: exports_map };
 
         self.modules.insert(name.to_string(), loaded_module);
         self.modules.get(name).ok_or_else(|| TsError::ReferenceError(format!("Module '{}' not found", name)))
@@ -249,10 +246,7 @@ impl LoadedNapiModule {
 impl NapiFunction {
     /// 创建新的 NAPI 函数包装器
     pub fn new(name: &str, func_ptr: *const c_void) -> Self {
-        Self {
-            name: name.to_string(),
-            func_ptr,
-        }
+        Self { name: name.to_string(), func_ptr }
     }
 
     /// 调用 NAPI 函数
@@ -317,7 +311,8 @@ pub fn ts_value_to_napi(_env: NapiEnv, value: &TsValue) -> Result<NapiValue, TsE
         TsValue::Union(values) => {
             if values.is_empty() {
                 Ok(NapiValue(std::ptr::null_mut()))
-            } else {
+            }
+            else {
                 ts_value_to_napi(_env, &values[0])
             }
         }
@@ -379,7 +374,8 @@ pub fn create_napi_error(message: &str) -> TsError {
 pub fn check_napi_status(status: NapiStatus) -> Result<(), TsError> {
     if status == NapiStatus::Ok {
         Ok(())
-    } else {
+    }
+    else {
         Err(TsError::Other(format!("NAPI operation failed with status: {:?}", status)))
     }
 }

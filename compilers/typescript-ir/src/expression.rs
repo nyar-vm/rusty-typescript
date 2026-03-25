@@ -159,7 +159,7 @@ impl Expression {
                         return None;
                     }
                 }
-                Some(TsValue::Object(evaluated))
+                Some(TsValue::Object(evaluated.into_iter().collect()))
             }
             _ => None, // 其他表达式类型无法在编译时求值
         }

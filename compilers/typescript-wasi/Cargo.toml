@@ -1,4 +1,5 @@
 [package]
+publish = false
 name = "typescript-wasi"
 version = { workspace = true }
 edition = { workspace = true }
@@ -10,11 +11,12 @@ license = { workspace = true }
 crate-type = ["cdylib"]
 
 [dependencies]
-oak-typescript = { workspace = true }
-oak-core = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 log = { workspace = true }
 serde_json = { workspace = true }
 
 [target.wasm32-wasip2.dependencies]
-# WASI 特定依赖
+wit-bindgen = { version = "0.15.0", features = ["macros"] }
+
+
+

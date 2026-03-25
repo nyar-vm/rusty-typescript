@@ -1,0 +1,10 @@
+[package]
+name = "test-webidl-lexer"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+description = "Test WebIDL lexer"
+
+[dependencies]
+typescript-webidl = { workspace = true }

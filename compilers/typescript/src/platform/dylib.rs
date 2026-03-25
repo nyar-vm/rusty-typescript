@@ -2,8 +2,10 @@
 //!
 //! 提供统一的跨平台动态库加载接口，支持 Windows、Linux 和 macOS。
 
-use std::ffi::{c_char, c_void, CStr, CString, OsStr};
-use std::path::Path;
+use std::{
+    ffi::{CStr, CString, OsStr, c_char, c_void},
+    path::Path,
+};
 
 /// 动态库错误类型
 #[derive(Debug, Clone)]
@@ -71,11 +73,12 @@ impl DynamicLibrary {
 
         #[cfg(windows)]
         {
-            use windows_sys::Win32::Foundation::HMODULE;
-            use windows_sys::Win32::System::LibraryLoader::{LoadLibraryA, GetLastError};
+            use windows_sys::Win32::{
+                Foundation::{GetLastError, HMODULE},
+                System::LibraryLoader::LoadLibraryA,
+            };
 
-            let c_path = CString::new(path_str.as_bytes())
-                .map_err(|e| DylibError::OpenError(e.to_string()))?;
+            let c_path = CString::new(path_str.as_bytes()).map_err(|e| DylibError::OpenError(e.to_string()))?;
 
             let handle = unsafe { LoadLibraryA(c_path.as_ptr() as *const u8) };
 
@@ -89,10 +92,9 @@ impl DynamicLibrary {
 
         #[cfg(unix)]
         {
-            use libc::{dlopen, RTLD_NOW, RTLD_LOCAL};
+            use libc::{RTLD_LOCAL, RTLD_NOW, dlopen};
 
-            let c_path = CString::new(path_str.as_bytes())
-                .map_err(|e| DylibError::OpenError(e.to_string()))?;
+            let c_path = CString::new(path_str.as_bytes()).map_err(|e| DylibError::OpenError(e.to_string()))?;
 
             let handle = unsafe { dlopen(c_path.as_ptr(), RTLD_NOW | RTLD_LOCAL) };
 
@@ -101,7 +103,8 @@ impl DynamicLibrary {
                     let err_ptr = libc::dlerror();
                     if err_ptr.is_null() {
                         "Unknown error".to_string()
-                    } else {
+                    }
+                    else {
                         CStr::from_ptr(err_ptr).to_string_lossy().to_string()
                     }
                 };
@@ -123,11 +126,9 @@ impl DynamicLibrary {
     pub fn get<T>(&self, name: &str) -> Result<Symbol<T>, DylibError> {
         #[cfg(windows)]
         {
-            use windows_sys::Win32::Foundation::HMODULE;
-            use windows_sys::Win32::System::LibraryLoader::GetProcAddress;
+            use windows_sys::Win32::{Foundation::HMODULE, System::LibraryLoader::GetProcAddress};
 
-            let c_name = CString::new(name)
-                .map_err(|e| DylibError::SymbolError(e.to_string()))?;
+            let c_name = CString::new(name).map_err(|e| DylibError::SymbolError(e.to_string()))?;
 
             let ptr = unsafe { GetProcAddress(self.handle as HMODULE, c_name.as_ptr() as *const u8) };
 
@@ -135,18 +136,14 @@ impl DynamicLibrary {
                 return Err(DylibError::SymbolError(format!("Symbol '{}' not found", name)));
             }
 
-            Ok(Symbol {
-                ptr: ptr.unwrap() as *mut c_void,
-                _marker: std::marker::PhantomData,
-            })
+            Ok(Symbol { ptr: ptr.unwrap() as *mut c_void, _marker: std::marker::PhantomData })
         }
 
         #[cfg(unix)]
         {
             use libc::dlsym;
 
-            let c_name = CString::new(name)
-                .map_err(|e| DylibError::SymbolError(e.to_string()))?;
+            let c_name = CString::new(name).map_err(|e| DylibError::SymbolError(e.to_string()))?;
 
             let ptr = unsafe { dlsym(self.handle, c_name.as_ptr()) };
 
@@ -155,17 +152,15 @@ impl DynamicLibrary {
                     let err_ptr = libc::dlerror();
                     if err_ptr.is_null() {
                         format!("Symbol '{}' not found", name)
-                    } else {
+                    }
+                    else {
                         format!("Symbol '{}' not found: {}", name, CStr::from_ptr(err_ptr).to_string_lossy())
                     }
                 };
                 return Err(DylibError::SymbolError(error));
             }
 
-            Ok(Symbol {
-                ptr,
-                _marker: std::marker::PhantomData,
-            })
+            Ok(Symbol { ptr, _marker: std::marker::PhantomData })
         }
     }
 
@@ -180,8 +175,7 @@ impl Drop for DynamicLibrary {
         if !self.handle.is_null() {
             #[cfg(windows)]
             {
-                use windows_sys::Win32::Foundation::HMODULE;
-                use windows_sys::Win32::System::LibraryLoader::FreeLibrary;
+                use windows_sys::Win32::Foundation::{FreeLibrary, HMODULE};
 
                 unsafe {
                     FreeLibrary(self.handle as HMODULE);
