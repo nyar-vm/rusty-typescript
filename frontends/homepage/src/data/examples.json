@@ -1,0 +1,116 @@
+{
+    "categories": [
+        {
+            "id": "basics",
+            "name": "基础",
+            "description": "TypeScript基础语法和概念"
+        },
+        {
+            "id": "functions",
+            "name": "函数",
+            "description": "TypeScript函数相关示例"
+        },
+        {
+            "id": "classes",
+            "name": "类",
+            "description": "TypeScript类和面向对象编程"
+        },
+        {
+            "id": "interfaces",
+            "name": "接口",
+            "description": "TypeScript接口和类型定义"
+        },
+        {
+            "id": "generics",
+            "name": "泛型",
+            "description": "TypeScript泛型编程"
+        },
+        {
+            "id": "advanced",
+            "name": "高级",
+            "description": "TypeScript高级特性"
+        }
+    ],
+    "examples": [
+        {
+            "id": "hello-world",
+            "title": "Hello World",
+            "description": "基础的TypeScript Hello World示例",
+            "code": "console.log('Hello, TypeScript!');\n\nfunction greet(name: string): string {\n  return \"Hello, \" + name + \"!\";\n}\n\nconsole.log(greet('World'));",
+            "category": "basics",
+            "tags": ["基础", "console"]
+        },
+        {
+            "id": "variables",
+            "title": "变量声明",
+            "description": "TypeScript变量声明和类型注解",
+            "code": "// 变量声明\nlet message: string = 'Hello TypeScript';\nconst pi: number = 3.14;\nlet isActive: boolean = true;\n\n// 类型推断\nlet inferredString = 'This is a string'; // 类型推断为string\nlet inferredNumber = 42; // 类型推断为number\n\nconsole.log(message);\nconsole.log(pi);\nconsole.log(isActive);\nconsole.log(inferredString);\nconsole.log(inferredNumber);",
+            "category": "basics",
+            "tags": ["基础", "变量", "类型"]
+        },
+        {
+            "id": "functions-basic",
+            "title": "函数基础",
+            "description": "TypeScript函数定义和参数类型",
+            "code": "// 函数定义\nfunction add(a: number, b: number): number {\n  return a + b;\n}\n\n// 可选参数\nfunction greet(name: string, greeting?: string): string {\n  return greeting ? `${greeting}, ${name}!` : `Hello, ${name}!`;\n}\n\n// 默认参数\nfunction calculateDiscount(price: number, discount: number = 0.1): number {\n  return price * (1 - discount);\n}\n\nconsole.log(add(5, 3));\nconsole.log(greet('Alice'));\nconsole.log(greet('Bob', 'Hi'));\nconsole.log(calculateDiscount(100));\nconsole.log(calculateDiscount(100, 0.2));",
+            "category": "functions",
+            "tags": ["函数", "参数", "返回值"]
+        },
+        {
+            "id": "arrow-functions",
+            "title": "箭头函数",
+            "description": "TypeScript箭头函数语法",
+            "code": "// 箭头函数\nconst multiply = (a: number, b: number): number => a * b;\n\n// 多行箭头函数\nconst divide = (a: number, b: number): number => {\n  if (b === 0) {\n    throw new Error('Cannot divide by zero');\n  }\n  return a / b;\n};\n\n// 无参数箭头函数\nconst getRandomNumber = (): number => Math.random();\n\n// 单个参数箭头函数\nconst square = (x: number): number => x * x;\n\nconsole.log(multiply(4, 5));\nconsole.log(divide(10, 2));\nconsole.log(getRandomNumber());\nconsole.log(square(6));",
+            "category": "functions",
+            "tags": ["函数", "箭头函数"]
+        },
+        {
+            "id": "classes-basic",
+            "title": "类的基础",
+            "description": "TypeScript类的定义和使用",
+            "code": "class Person {\n  // 属性\n  name: string;\n  age: number;\n\n  // 构造函数\n  constructor(name: string, age: number) {\n    this.name = name;\n    this.age = age;\n  }\n\n  // 方法\n  greet(): string {\n    return `Hello, my name is ${this.name} and I am ${this.age} years old.`;\n  }\n\n  // getter\n  get isAdult(): boolean {\n    return this.age >= 18;\n  }\n\n  // setter\n  set fullName(name: string) {\n    this.name = name;\n  }\n}\n\n// 创建实例\nconst person = new Person('Alice', 25);\nconsole.log(person.greet());\nconsole.log('Is adult:', person.isAdult);\n\nperson.fullName = 'Alice Smith';\nconsole.log(person.greet());",
+            "category": "classes",
+            "tags": ["类", "构造函数", "方法"]
+        },
+        {
+            "id": "inheritance",
+            "title": "继承",
+            "description": "TypeScript类的继承和多态",
+            "code": "// 基类\nclass Animal {\n  name: string;\n\n  constructor(name: string) {\n    this.name = name;\n  }\n\n  makeSound(): string {\n    return 'Some generic sound';\n  }\n}\n\n// 派生类\nclass Dog extends Animal {\n  breed: string;\n\n  constructor(name: string, breed: string) {\n    super(name);\n    this.breed = breed;\n  }\n\n  // 重写方法\n  makeSound(): string {\n    return 'Woof! Woof!';\n  }\n\n  // 新增方法\n  fetch(): string {\n    return `${this.name} is fetching!`;\n  }\n}\n\n// 另一个派生类\nclass Cat extends Animal {\n  makeSound(): string {\n    return 'Meow!';\n  }\n}\n\nconst animal = new Animal('Generic Animal');\nconst dog = new Dog('Rex', 'German Shepherd');\nconst cat = new Cat('Whiskers');\n\nconsole.log(animal.makeSound());\nconsole.log(dog.makeSound());\nconsole.log(dog.fetch());\nconsole.log(cat.makeSound());",
+            "category": "classes",
+            "tags": ["类", "继承", "多态"]
+        },
+        {
+            "id": "interfaces-basic",
+            "title": "接口基础",
+            "description": "TypeScript接口的定义和使用",
+            "code": "// 接口定义\ninterface User {\n  id: number;\n  name: string;\n  email: string;\n  age?: number; // 可选属性\n}\n\n// 使用接口\nfunction createUser(user: User): User {\n  return {\n    id: user.id,\n    name: user.name,\n    email: user.email,\n    age: user.age\n  };\n}\n\n// 实现接口\nclass PremiumUser implements User {\n  id: number;\n  name: string;\n  email: string;\n  age?: number;\n  membershipLevel: string;\n\n  constructor(id: number, name: string, email: string, membershipLevel: string) {\n    this.id = id;\n    this.name = name;\n    this.email = email;\n    this.membershipLevel = membershipLevel;\n  }\n}\n\nconst user1 = createUser({ id: 1, name: 'Alice', email: 'alice@example.com' });\nconst user2 = new PremiumUser(2, 'Bob', 'bob@example.com', 'gold');\n\nconsole.log(user1);\nconsole.log(user2);",
+            "category": "interfaces",
+            "tags": ["接口", "类型"]
+        },
+        {
+            "id": "generics-basic",
+            "title": "泛型基础",
+            "description": "TypeScript泛型的使用",
+            "code": "// 泛型函数\nfunction identity<T>(value: T): T {\n  return value;\n}\n\n// 泛型类\nclass Box<T> {\n  private value: T;\n\n  constructor(value: T) {\n    this.value = value;\n  }\n\n  getValue(): T {\n    return this.value;\n  }\n\n  setValue(value: T): void {\n    this.value = value;\n  }\n}\n\n// 泛型接口\ninterface Pair<K, V> {\n  key: K;\n  value: V;\n}\n\n// 使用泛型\nconst numberIdentity = identity<number>(42);\nconst stringIdentity = identity<string>('Hello');\n\nconst numberBox = new Box<number>(100);\nconst stringBox = new Box<string>('TypeScript');\n\nconst pair: Pair<string, number> = { key: 'age', value: 25 };\n\nconsole.log(numberIdentity);\nconsole.log(stringIdentity);\nconsole.log(numberBox.getValue());\nconsole.log(stringBox.getValue());\nconsole.log(pair);",
+            "category": "generics",
+            "tags": ["泛型", "函数", "类"]
+        },
+        {
+            "id": "advanced-types",
+            "title": "高级类型",
+            "description": "TypeScript高级类型特性",
+            "code": "// 联合类型\ntype StringOrNumber = string | number;\n\n// 交叉类型\ntype Person = {\n  name: string;\n  age: number;\n};\n\ntype Employee = {\n  employeeId: number;\n  department: string;\n};\n\ntype EmployeePerson = Person & Employee;\n\n// 类型守卫\nfunction isString(value: unknown): value is string {\n  return typeof value === 'string';\n}\n\n// 类型别名\ntype UserId = string | number;\n\n// 使用高级类型\nfunction processValue(value: StringOrNumber): void {\n  if (typeof value === 'string') {\n    console.log('String value:', value.toUpperCase());\n  } else {\n    console.log('Number value:', value * 2);\n  }\n}\n\nconst employee: EmployeePerson = {\n  name: 'Alice',\n  age: 30,\n  employeeId: 1001,\n  department: 'Engineering'\n};\n\nconst userId: UserId = 123;\n\nprocessValue('Hello');\nprocessValue(42);\nconsole.log(employee);\nconsole.log('User ID:', userId);",
+            "category": "advanced",
+            "tags": ["高级类型", "联合类型", "交叉类型"]
+        },
+        {
+            "id": "async-await",
+            "title": "Async/Await",
+            "description": "TypeScript异步编程",
+            "code": "// 异步函数\nasync function fetchData(): Promise<string> {\n  // 模拟API调用\n  return new Promise((resolve) => {\n    setTimeout(() => {\n      resolve('Data fetched successfully!');\n    }, 1000);\n  });\n}\n\n// 使用async/await\nasync function processData() {\n  try {\n    console.log('Starting to fetch data...');\n    const data = await fetchData();\n    console.log('Data received:', data);\n    return data;\n  } catch (error) {\n    console.error('Error fetching data:', error);\n    throw error;\n  }\n}\n\n// 并行异步操作\nasync function fetchMultipleData() {\n  const [data1, data2] = await Promise.all([\n    fetchData(),\n    new Promise<string>((resolve) => setTimeout(() => resolve('Second data'), 500))\n  ]);\n  \n  console.log('First data:', data1);\n  console.log('Second data:', data2);\n  return { data1, data2 };\n}\n\n// 调用异步函数\nprocessData().then((result) => {\n  console.log('Process completed:', result);\n});\n\nfetchMultipleData().then((result) => {\n  console.log('Multiple data fetched:', result);\n});",
+            "category": "advanced",
+            "tags": ["异步", "Promise", "async/await"]
+        }
+    ]
+}

@@ -1,0 +1,14 @@
+{
+    "name": "@nyar/typescript",
+    "version": "0.1.0",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "build": "tsc",
+        "dev": "tsc --watch"
+    },
+    "devDependencies": {
+        "@types/node": "^20.19.37",
+        "typescript": "^5.0.0"
+    }
+}

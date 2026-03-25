@@ -6,6 +6,9 @@ authors = { workspace = true }
 license = { workspace = true }
 description = "TypeScript compiler and runtime"
 
+[lib]
+crate-type = ["cdylib", "rlib"]
+
 [dependencies]
 typescript-types = { workspace = true }
 typescript-ir = { workspace = true }
@@ -14,3 +17,10 @@ oak-core = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 log = { workspace = true }
 env_logger = { workspace = true }
+rand = { workspace = true }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.52", features = ["Win32_Foundation", "Win32_System_LibraryLoader"] }
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"

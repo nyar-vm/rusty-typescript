@@ -3,24 +3,22 @@
     <div 
       :class="[
         'flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-all',
-        currentPath === node.path 
-          ? 'bg-blue-500/20 text-blue-400 font-medium' 
-          : 'text-slate-400 hover:bg-blue-500/10 hover:text-white'
+        'text-slate-700 hover:bg-blue-100 hover:text-blue-800'
       ]"
-      @click="node.isDirectory ? toggle() : handleSelect()"
+      @click="node.children ? toggle() : handleSelect()"
     >
-      <span v-if="node.isDirectory" class="text-sm">
+      <span v-if="node.children" class="text-sm text-blue-600">
         {{ isExpanded ? '▼' : '▶' }}
       </span>
+      <span v-else class="text-sm w-4"></span>
       <span class="flex-1">{{ node.title }}</span>
     </div>
-    <div v-if="node.isDirectory && isExpanded && node.children" class="ml-4 mt-1">
+    <div v-if="node.children && isExpanded" class="ml-4 mt-1">
       <DocTreeNode 
         v-for="child in node.children" 
         :key="child.id"
         :node="child"
-        :current-path="currentPath"
-        @select="$emit('select', $event)"
+        @select="(id: string, title: string) => $emit('select', id, title)"
       />
     </div>
   </div>
@@ -28,16 +26,20 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
-import type { DocNode } from "@/docs";
+
+interface DocNode {
+    id: string;
+    title: string;
+    children?: DocNode[];
+}
 
 interface Props {
     node: DocNode;
-    currentPath: string;
 }
 
 const props = defineProps<Props>();
 const emit = defineEmits<{
-    select: [node: DocNode];
+    select: [id: string, title: string];
 }>();
 
 const isExpanded = ref(true);
@@ -47,8 +49,6 @@ function toggle() {
 }
 
 function handleSelect() {
-    if (!props.node.isDirectory) {
-        emit("select", props.node);
-    }
+    emit("select", props.node.id, props.node.title);
 }
 </script>

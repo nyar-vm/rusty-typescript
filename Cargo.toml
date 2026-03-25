@@ -1,14 +1,13 @@
 [workspace]
 resolver = "3"
 members = [
-    "compilers/typescript-types",
-    "compilers/typescript-ir",
-    "compilers/typescript",
+    "compilers/*",
 ]
 default-members = [
     "compilers/typescript-types",
     "compilers/typescript-ir",
     "compilers/typescript",
+    "compilers/typescript-lsp",
 ]
 
 [workspace.package]
@@ -25,14 +24,35 @@ homepage = "https://github.com/nyar-vm/rusty-typescript"
 # 共享依赖
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-thiserror = "1.0"
+
 log = "0.4"
 env_logger = "0.10"
+futures = "0.3"
+tokio = { version = "1", features = ["full"] }
+proc-macro2 = "1.0"
+quote = "1.0"
+syn = { version = "2.0", features = ["full", "derive", "extra-traits"] }
+clap = { version = "4.5.0", features = ["derive", "env"] }
+toml = "0.8.14"
+walkdir = "2.5.0"
+pathdiff = "0.2.1"
+num_cpus = "1.16.0"
+rayon = "1.10.0"
+winapi = { version = "0.3.9", features = ["handleapi", "processenv", "winbase"] }
+libc = "0.2.155"
+napi = { version = "2", features = ["async", "napi8"] }
+napi-derive = "2"
+rand = "0.8"
+napi-build = "2"
 
 # 项目内部依赖
 typescript-types = { path = "compilers/typescript-types", version = "0.0.0" }
 typescript-ir = { path = "compilers/typescript-ir", version = "0.0.0" }
+typescript = { path = "compilers/typescript", version = "0.0.0" }
 
 # oak 依赖
 oak-typescript = { git = "https://github.com/ygg-lang/oaks.git", branch = "dev", version = "0.0.10" }
 oak-core = { git = "https://github.com/ygg-lang/oaks.git", branch = "dev", version = "0.0.10" }
+oak-lsp = { git = "https://github.com/ygg-lang/oaks.git", branch = "dev", version = "0.0.10" }
+oak-mcp = { git = "https://github.com/ygg-lang/oaks.git", branch = "dev", version = "0.0.10" }
+oak-vfs = { git = "https://github.com/ygg-lang/oaks.git", branch = "dev", version = "0.0.10" }

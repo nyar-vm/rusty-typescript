@@ -1,0 +1,20 @@
+[package]
+name = "typescript-wasi"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+description = "Rusty TypeScript runtime exported as WASI module"
+license = { workspace = true }
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+oak-typescript = { workspace = true }
+oak-core = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+log = { workspace = true }
+serde_json = { workspace = true }
+
+[target.wasm32-wasip2.dependencies]
+# WASI 特定依赖

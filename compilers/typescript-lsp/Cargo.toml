@@ -1,0 +1,29 @@
+[package]
+name = "typescript-lsp"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+description = "TypeScript LSP implementation"
+
+[lib]
+crate-type = ["rlib"]
+
+[features]
+default = ["lsp"]
+lsp = []
+oak-highlight = []
+oak-pretty-print = []
+
+[dependencies]
+typescript = { workspace = true }
+typescript-types = { workspace = true }
+typescript-ir = { workspace = true }
+oak-core = { workspace = true }
+oak-lsp = { workspace = true }
+oak-mcp = { workspace = true }
+oak-vfs = { workspace = true }
+futures = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+log = { workspace = true }

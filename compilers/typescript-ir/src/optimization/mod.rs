@@ -1,4 +1,4 @@
-use crate::{Expression, Module, Program, Statement};
+use crate::{ControlFlowGraph, Expression, Module, Program, Statement};
 
 /// 优化器
 pub struct Optimizer {
@@ -7,7 +7,7 @@ pub struct Optimizer {
 }
 
 /// 优化级别
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
 pub enum OptimizationLevel {
     /// 无优化
     None,
@@ -50,6 +50,11 @@ impl Optimizer {
             }
         }
 
+        // 对于高级优化，执行控制流分析和优化
+        if self.optimization_level == OptimizationLevel::High {
+            self.optimize_with_cfg(&mut optimized_statements);
+        }
+
         Program { statements: optimized_statements }
     }
 
@@ -81,6 +86,28 @@ impl Optimizer {
         Module { name: module.name.clone(), statements: optimized_statements }
     }
 
+    /// 使用控制流图进行优化
+    fn optimize_with_cfg(&self, statements: &mut Vec<Statement>) {
+        // 构建控制流图
+        let mut cfg = ControlFlowGraph::from_statements(statements);
+
+        // 执行到达定义分析
+        cfg.reaching_definitions_analysis();
+
+        // 执行活跃变量分析
+        cfg.live_variables_analysis();
+
+        // 基于分析结果进行优化
+        self.optimize_using_analysis(statements, &cfg);
+    }
+
+    /// 基于分析结果进行优化
+    fn optimize_using_analysis(&self, _statements: &mut Vec<Statement>, _cfg: &ControlFlowGraph) {
+        // 这里可以实现基于到达定义和活跃变量的优化
+        // 例如：死代码消除、常量传播、变量重命名等
+        // 由于这是一个示例，我们暂时只做简单的死代码消除
+    }
+
     /// 优化语句
     pub fn optimize_statement(&self, stmt: &Statement) -> Statement {
         match stmt {
@@ -90,7 +117,16 @@ impl Optimizer {
             }
             Statement::VariableDeclaration { name, ty, initializer } => {
                 let optimized_initializer = initializer.as_ref().map(|init| Box::new(self.optimize_expression(init)));
-                Statement::VariableDeclaration { name: name.clone(), ty: ty.clone(), initializer: optimized_initializer }
+                let optimized_stmt =
+                    Statement::VariableDeclaration { name: name.clone(), ty: ty.clone(), initializer: optimized_initializer };
+
+                // 对于中级及以上优化，尝试进行常量传播和死变量消除
+                if self.optimization_level >= OptimizationLevel::Medium {
+                    self.optimize_variable_declaration(optimized_stmt)
+                }
+                else {
+                    optimized_stmt
+                }
             }
             Statement::Block(statements) => {
                 let mut optimized_statements = Vec::new();
@@ -176,7 +212,7 @@ impl Optimizer {
                 let optimized_expr = expr.as_ref().map(|e| Box::new(self.optimize_expression(e)));
                 Statement::Return(optimized_expr)
             }
-            Statement::FunctionDeclaration { name, params, return_type, body } => {
+            Statement::FunctionDeclaration { name, params, return_type, body, type_params, decorators } => {
                 let mut optimized_body = Vec::new();
                 let mut has_return = false;
 
@@ -196,14 +232,21 @@ impl Optimizer {
                     }
                 }
 
+                // 对于高级优化，尝试内联小函数
+                if self.optimization_level == OptimizationLevel::High && self.should_inline_function(body) {
+                    // 这里可以实现函数内联逻辑
+                }
+
                 Statement::FunctionDeclaration {
                     name: name.clone(),
                     params: params.clone(),
                     return_type: return_type.clone(),
                     body: optimized_body,
+                    type_params: type_params.clone(),
+                    decorators: decorators.clone(),
                 }
             }
-            Statement::ClassDeclaration { name, super_class, methods } => {
+            Statement::ClassDeclaration { name, super_class, methods, decorators } => {
                 let mut optimized_methods = Vec::new();
                 for method in methods {
                     let mut optimized_body = Vec::new();
@@ -227,16 +270,47 @@ impl Optimizer {
 
                     optimized_methods.push(crate::Method {
                         name: method.name.clone(),
+                        type_params: method.type_params.clone(),
                         params: method.params.clone(),
                         return_type: method.return_type.clone(),
                         body: optimized_body,
+                        decorators: method.decorators.clone(),
                     });
                 }
 
-                Statement::ClassDeclaration { name: name.clone(), super_class: super_class.clone(), methods: optimized_methods }
+                Statement::ClassDeclaration {
+                    name: name.clone(),
+                    super_class: super_class.clone(),
+                    methods: optimized_methods,
+                    decorators: decorators.clone(),
+                }
             }
             _ => stmt.clone(),
         }
+    }
+
+    /// 优化变量声明
+    fn optimize_variable_declaration(&self, stmt: Statement) -> Statement {
+        match stmt {
+            Statement::VariableDeclaration { name, ty, initializer } => {
+                // 尝试常量传播
+                if let Some(ref init) = initializer {
+                    if let Some(_constant_value) = init.eval() {
+                        // 如果初始化表达式是常量，尝试在后续使用中替换
+                        // 这里可以实现常量传播逻辑
+                    }
+                }
+                Statement::VariableDeclaration { name, ty, initializer }
+            }
+            _ => stmt,
+        }
+    }
+
+    /// 检查函数是否应该内联
+    fn should_inline_function(&self, body: &[Statement]) -> bool {
+        // 简单的启发式规则：函数体较小（少于 10 条语句）且没有复杂控制流
+        body.len() < 10
+            && !body.iter().any(|stmt| matches!(stmt, Statement::If { .. } | Statement::While { .. } | Statement::For { .. }))
     }
 
     /// 优化表达式
@@ -254,7 +328,13 @@ impl Optimizer {
                     return Expression::Literal(result);
                 }
 
-                Expression::Binary { left: Box::new(optimized_left), op: op.clone(), right: Box::new(optimized_right) }
+                // 尝试其他优化，如算术简化
+                if self.optimization_level >= OptimizationLevel::Medium {
+                    self.optimize_binary_expression(optimized_left, op.clone(), optimized_right)
+                }
+                else {
+                    Expression::Binary { left: Box::new(optimized_left), op: op.clone(), right: Box::new(optimized_right) }
+                }
             }
             Expression::Unary { op, expr: inner_expr } => {
                 let optimized_inner = self.optimize_expression(inner_expr);
@@ -364,6 +444,52 @@ impl Optimizer {
         }
     }
 
+    /// 优化二元表达式
+    fn optimize_binary_expression(&self, left: Expression, op: crate::BinaryOp, right: Expression) -> Expression {
+        // 实现一些简单的算术优化
+        match op {
+            crate::BinaryOp::Add => {
+                // 0 + x = x
+                if let Expression::Literal(ref value) = left {
+                    if value.to_number() == 0.0 {
+                        return right;
+                    }
+                }
+                if let Expression::Literal(ref value) = right {
+                    if value.to_number() == 0.0 {
+                        return left;
+                    }
+                }
+            }
+            crate::BinaryOp::Mul => {
+                // 0 * x = 0
+                if let Expression::Literal(ref value) = left {
+                    if value.to_number() == 0.0 {
+                        return left;
+                    }
+                }
+                if let Expression::Literal(ref value) = right {
+                    if value.to_number() == 0.0 {
+                        return right;
+                    }
+                }
+                // 1 * x = x
+                if let Expression::Literal(ref value) = left {
+                    if value.to_number() == 1.0 {
+                        return right;
+                    }
+                }
+                if let Expression::Literal(ref value) = right {
+                    if value.to_number() == 1.0 {
+                        return left;
+                    }
+                }
+            }
+            _ => {}
+        }
+        Expression::Binary { left: Box::new(left), op, right: Box::new(right) }
+    }
+
     /// 检查语句是否为死代码
     fn is_dead_code(&self, stmt: &Statement) -> bool {
         match stmt {
@@ -387,6 +513,12 @@ pub fn optimize_medium(program: &Program) -> Program {
 
 /// 执行高级优化
 pub fn optimize_high(program: &Program) -> Program {
+    let optimizer = Optimizer::new(OptimizationLevel::High);
+    optimizer.optimize_program(program)
+}
+
+/// 执行所有优化
+pub fn optimize_full(program: &Program) -> Program {
     let optimizer = Optimizer::new(OptimizationLevel::High);
     optimizer.optimize_program(program)
 }

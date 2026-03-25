@@ -1,6 +1,9 @@
 #![warn(missing_docs)]
 
-use std::rc::Rc;
+use std::{
+    hash::{Hash, Hasher},
+    rc::Rc,
+};
 
 /// TypeScript 值类型枚举
 pub enum TsValue {
@@ -92,6 +95,98 @@ impl std::fmt::Debug for TsValue {
             TsValue::Set(_) => write!(f, "Set"),
             TsValue::Promise(_) => write!(f, "Promise"),
             TsValue::Iterable(_) => write!(f, "Iterable"),
+        }
+    }
+}
+
+impl Hash for TsValue {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        match self {
+            TsValue::Undefined => 0.hash(state),
+            TsValue::Null => 1.hash(state),
+            TsValue::Boolean(b) => {
+                2.hash(state);
+                b.hash(state);
+            }
+            TsValue::Number(n) => {
+                3.hash(state);
+                n.to_bits().hash(state);
+            }
+            TsValue::String(s) => {
+                4.hash(state);
+                s.hash(state);
+            }
+            TsValue::Object(props) => {
+                5.hash(state);
+                props.len().hash(state);
+                for (key, value) in props {
+                    key.hash(state);
+                    value.hash(state);
+                }
+            }
+            TsValue::Array(arr) => {
+                6.hash(state);
+                arr.len().hash(state);
+                for item in arr {
+                    item.hash(state);
+                }
+            }
+            TsValue::Function(_) => 7.hash(state),
+            TsValue::Error(s) => {
+                8.hash(state);
+                s.hash(state);
+            }
+            TsValue::Union(values) => {
+                9.hash(state);
+                values.len().hash(state);
+                for value in values {
+                    value.hash(state);
+                }
+            }
+            TsValue::Generic(name, args) => {
+                10.hash(state);
+                name.hash(state);
+                args.len().hash(state);
+                for arg in args {
+                    arg.hash(state);
+                }
+            }
+            TsValue::Symbol(s) => {
+                11.hash(state);
+                s.hash(state);
+            }
+            TsValue::BigInt(bi) => {
+                12.hash(state);
+                bi.hash(state);
+            }
+            TsValue::Date(d) => {
+                13.hash(state);
+                d.hash(state);
+            }
+            TsValue::RegExp(pattern) => {
+                14.hash(state);
+                pattern.hash(state);
+            }
+            TsValue::Map(entries) => {
+                15.hash(state);
+                entries.len().hash(state);
+                for (key, value) in entries {
+                    key.hash(state);
+                    value.hash(state);
+                }
+            }
+            TsValue::Set(values) => {
+                16.hash(state);
+                values.len().hash(state);
+                for value in values {
+                    value.hash(state);
+                }
+            }
+            TsValue::Promise(value) => {
+                17.hash(state);
+                value.hash(state);
+            }
+            TsValue::Iterable(_) => 18.hash(state),
         }
     }
 }
@@ -323,6 +418,18 @@ pub enum TsError {
     RangeError(String),
     /// 其他错误
     Other(String),
+}
+
+impl std::fmt::Display for TsError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TsError::TypeError(msg) => write!(f, "TypeError: {}", msg),
+            TsError::ReferenceError(msg) => write!(f, "ReferenceError: {}", msg),
+            TsError::SyntaxError(msg) => write!(f, "SyntaxError: {}", msg),
+            TsError::RangeError(msg) => write!(f, "RangeError: {}", msg),
+            TsError::Other(msg) => write!(f, "Error: {}", msg),
+        }
+    }
 }
 
 /// 从 Rust 类型转换为 TypeScript 值的 trait

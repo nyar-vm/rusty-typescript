@@ -1,0 +1,78 @@
+[package]
+publish = false
+name = "typescript-tools"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+description = "Rusty TypeScript CLI tools"
+license = { workspace = true }
+repository = { workspace = true }
+homepage = { workspace = true }
+
+[dependencies]
+# 核心依赖
+# typescript = { workspace = true }
+# typescript-types = { workspace = true }
+# typescript-ir = { workspace = true }
+
+# CLI 相关
+clap = { workspace = true }
+tokio = { workspace = true }
+
+
+
+# 配置相关
+serde = { workspace = true }
+toml = { workspace = true }
+serde_json = { workspace = true }
+
+# 文件系统相关
+walkdir = { workspace = true }
+pathdiff = { workspace = true }
+
+# 并发相关
+num_cpus = { workspace = true }
+rayon = { workspace = true }
+
+# 日志相关
+log = { workspace = true }
+env_logger = { workspace = true }
+
+[target.'cfg(windows)'.dependencies]
+winapi = { workspace = true }
+
+[target.'cfg(unix)'.dependencies]
+libc = { workspace = true }
+
+[[bin]]
+name = "tsc"
+path = "bin/tsc.rs"
+
+# 暂时注释掉其他命令，等实现后再添加
+# [[bin]]
+# name = "rts"
+# path = "src/bin/rts.rs"
+# 
+# [[bin]]
+# name = "rts-check"
+# path = "src/bin/rts-check.rs"
+# 
+# [[bin]]
+# name = "rts-build"
+# path = "src/bin/rts-build.rs"
+# 
+# [[bin]]
+# name = "rts-fmt"
+# path = "src/bin/rts-fmt.rs"
+# 
+# [[bin]]
+# name = "rts-test"
+# path = "src/bin/rts-test.rs"
+# 
+# [[bin]]
+# name = "rts-analyze"
+# path = "src/bin/rts-analyze.rs"
+# 
+# [[bin]]
+# name = "rts-run"
+# path = "src/bin/rts-run.rs"

@@ -1,4 +1,4 @@
-use typescript_ir::{Expression, PrimitiveType, Program, Statement, TypeAnnotation};
+use typescript_ir::{Expression, PrimitiveType, Program, Statement, TypeAnnotation, BinaryOp, UnaryOp};
 use typescript_types::TsError;
 
 /// 类型环境
@@ -85,11 +85,59 @@ impl TypeEnvironment {
         match ty {
             TypeAnnotation::TypeReference(name) => {
                 if let Some(alias) = self.get_type_alias(name) {
+                    // 递归解析类型别名
                     self.resolve_type(alias)
                 }
                 else {
                     ty.clone()
                 }
+            }
+            TypeAnnotation::Array(elem) => {
+                let resolved_elem = self.resolve_type(elem);
+                TypeAnnotation::Array(Box::new(resolved_elem))
+            }
+            TypeAnnotation::Object(members) => {
+                let resolved_members: Vec<(String, TypeAnnotation)> = members.iter()
+                    .map(|(name, ty)| (name.clone(), self.resolve_type(ty)))
+                    .collect();
+                TypeAnnotation::Object(resolved_members)
+            }
+            TypeAnnotation::Union(types) => {
+                let resolved_types: Vec<TypeAnnotation> = types.iter()
+                    .map(|ty| self.resolve_type(ty))
+                    .collect();
+                TypeAnnotation::Union(resolved_types)
+            }
+            TypeAnnotation::Intersection(types) => {
+                let resolved_types: Vec<TypeAnnotation> = types.iter()
+                    .map(|ty| self.resolve_type(ty))
+                    .collect();
+                TypeAnnotation::Intersection(resolved_types)
+            }
+            TypeAnnotation::Function { params, return_type } => {
+                let resolved_params: Vec<TypeAnnotation> = params.iter()
+                    .map(|ty| self.resolve_type(ty))
+                    .collect();
+                let resolved_return = self.resolve_type(return_type);
+                TypeAnnotation::Function { 
+                    params: resolved_params, 
+                    return_type: Box::new(resolved_return) 
+                }
+            }
+            TypeAnnotation::Generic { name, args } => {
+                let resolved_args: Vec<TypeAnnotation> = args.iter()
+                    .map(|ty| self.resolve_type(ty))
+                    .collect();
+                TypeAnnotation::Generic { 
+                    name: name.clone(), 
+                    args: resolved_args 
+                }
+            }
+            TypeAnnotation::Tuple(types) => {
+                let resolved_types: Vec<TypeAnnotation> = types.iter()
+                    .map(|ty| self.resolve_type(ty))
+                    .collect();
+                TypeAnnotation::Tuple(resolved_types)
             }
             _ => ty.clone(),
         }
@@ -106,6 +154,18 @@ fn is_compatible(env: &TypeEnvironment, from: &TypeAnnotation, to: &TypeAnnotati
         (_, TypeAnnotation::Any) => true,
         // Any 只兼容 Any
         (TypeAnnotation::Any, _) => false,
+        // unknown 类型：可以赋值给任何类型
+        (TypeAnnotation::Unknown, _) => true,
+        // 只有 unknown 和 any 可以赋值给 unknown
+        (_, TypeAnnotation::Unknown) => matches!(&from, TypeAnnotation::Unknown | TypeAnnotation::Any),
+        // never 类型：可以赋值给任何类型
+        (TypeAnnotation::Never, _) => true,
+        // 只有 never 可以赋值给 never
+        (_, TypeAnnotation::Never) => matches!(&from, TypeAnnotation::Never),
+        // void 类型：只能赋值给 void, any, unknown
+        (TypeAnnotation::Void, _) => matches!(&to, TypeAnnotation::Void | TypeAnnotation::Any | TypeAnnotation::Unknown),
+        // 只有 void, any, unknown 可以赋值给 void
+        (_, TypeAnnotation::Void) => matches!(&from, TypeAnnotation::Void | TypeAnnotation::Any | TypeAnnotation::Unknown | TypeAnnotation::Never),
         // 基本类型兼容：相同类型或 null/undefined 相互兼容
         (TypeAnnotation::Primitive(a), TypeAnnotation::Primitive(b)) => {
             a == b
@@ -114,7 +174,7 @@ fn is_compatible(env: &TypeEnvironment, from: &TypeAnnotation, to: &TypeAnnotati
         }
         // 数组类型兼容：元素类型兼容
         (TypeAnnotation::Array(a), TypeAnnotation::Array(b)) => is_compatible(env, a, b),
-        // 对象类型兼容：to 中的所有成员在 from 中都存在且类型兼容
+        // 对象类型兼容：to 中的所有必需成员在 from 中都存在且类型兼容
         (TypeAnnotation::Object(from_members), TypeAnnotation::Object(to_members)) => {
             let from_map: std::collections::HashMap<_, _> = from_members.iter().map(|(name, ty)| (name, ty)).collect();
 
@@ -124,6 +184,8 @@ fn is_compatible(env: &TypeEnvironment, from: &TypeAnnotation, to: &TypeAnnotati
         }
         // 联合类型兼容：from 是 to 的子类型
         (_, TypeAnnotation::Union(to_types)) => to_types.iter().any(|to_ty| is_compatible(env, &from, to_ty)),
+        // 交叉类型兼容：from 必须兼容交叉类型的所有成员
+        (_, TypeAnnotation::Intersection(to_types)) => to_types.iter().all(|to_ty| is_compatible(env, &from, to_ty)),
         // 函数类型兼容：参数类型逆变，返回类型协变
         (
             TypeAnnotation::Function { params: from_params, return_type: from_return },
@@ -134,7 +196,7 @@ fn is_compatible(env: &TypeEnvironment, from: &TypeAnnotation, to: &TypeAnnotati
             }
 
             // 参数类型逆变：from 参数类型要比 to 参数类型更宽泛
-            let params_compatible =
+            let params_compatible = 
                 from_params.iter().zip(to_params.iter()).all(|(from_param, to_param)| is_compatible(env, to_param, from_param));
 
             // 返回类型协变：from 返回类型要比 to 返回类型更具体
@@ -143,7 +205,7 @@ fn is_compatible(env: &TypeEnvironment, from: &TypeAnnotation, to: &TypeAnnotati
             params_compatible && return_compatible
         }
         // 泛型类型兼容：需要更复杂的处理，这里简化处理
-        (TypeAnnotation::Generic(name1, args1), TypeAnnotation::Generic(name2, args2)) => {
+        (TypeAnnotation::Generic { name: name1, args: args1 }, TypeAnnotation::Generic { name: name2, args: args2 }) => {
             name1 == name2
                 && args1.len() == args2.len()
                 && args1.iter().zip(args2.iter()).all(|(a, b)| is_compatible(env, a, b))
@@ -151,6 +213,10 @@ fn is_compatible(env: &TypeEnvironment, from: &TypeAnnotation, to: &TypeAnnotati
         // 元组类型兼容：每个位置的类型都兼容
         (TypeAnnotation::Tuple(from_types), TypeAnnotation::Tuple(to_types)) => {
             from_types.len() == to_types.len() && from_types.iter().zip(to_types.iter()).all(|(a, b)| is_compatible(env, a, b))
+        }
+        // 类型引用兼容：解析后再检查
+        (TypeAnnotation::TypeReference(from_name), TypeAnnotation::TypeReference(to_name)) => {
+            from_name == to_name
         }
         // 其他情况不兼容
         _ => false,
@@ -205,36 +271,83 @@ fn check_statement(statement: &Statement, env: &mut TypeEnvironment) -> Result<(
                 env.add_variable(name.clone(), TypeAnnotation::Any);
             }
         }
-        Statement::FunctionDeclaration { name, params, return_type, body } => {
-            // 检查函数体
+        Statement::FunctionDeclaration { name, params, return_type, body, .. } => {
+            // 检查函数体并推断返回类型
             let mut func_env = env.clone();
-            // 添加参数到函数环境
-            for (i, param) in params.iter().enumerate() {
-                // 暂时使用 any 类型，后续可以根据函数签名进行类型推断
+            // 添加参数到函数环境（初始为 any 类型）
+            let mut param_types = vec![];
+            for param in params {
+                // 暂时使用 any 类型，后续可以根据函数调用进行类型推断
                 func_env.add_variable(param.clone(), TypeAnnotation::Any);
+                param_types.push(TypeAnnotation::Any);
             }
-            // 检查函数体语句
+            
+            // 检查函数体语句并收集返回表达式类型
+            let mut return_types = vec![];
             for stmt in body {
-                check_statement(stmt, &mut func_env)?;
+                if let Statement::Return(Some(expr)) = stmt {
+                    let return_type = check_expression(expr, &mut func_env)?;
+                    return_types.push(return_type);
+                } else {
+                    check_statement(stmt, &mut func_env)?;
+                }
             }
+            
+            // 推断返回类型
+            let inferred_return_type = if return_types.is_empty() {
+                TypeAnnotation::Void
+            } else {
+                infer_common_type(&func_env, &return_types)
+            };
+            
+            // 验证返回类型与显式注解的兼容性
+            let final_return_type = if let Some(return_type) = return_type {
+                if !func_env.is_compatible(&inferred_return_type, return_type) {
+                    return Err(TsError::TypeError(format!(
+                        "Return type '{}' is not compatible with declared return type '{}'",
+                        format_type(&inferred_return_type),
+                        format_type(return_type)
+                    )));
+                }
+                return_type.clone()
+            } else {
+                inferred_return_type
+            };
+            
             // 添加函数到类型环境
-            env.add_function(name.clone(), vec![TypeAnnotation::Any; params.len()], return_type.clone());
+            env.add_function(name.clone(), param_types, Some(final_return_type));
         }
-        Statement::ClassDeclaration { name, super_class, methods } => {
+        Statement::ClassDeclaration { name, super_class, methods, .. } => {
             // 检查方法
+            let mut class_methods = std::collections::HashMap::new();
             for method in methods {
                 let mut method_env = env.clone();
                 // 添加方法参数到环境
                 for param in &method.params {
                     method_env.add_variable(param.clone(), TypeAnnotation::Any);
                 }
-                // 检查方法体
+                // 检查方法体并推断返回类型
+                let mut return_types = vec![];
                 for stmt in &method.body {
-                    check_statement(stmt, &mut method_env)?;
+                    if let Statement::Return(Some(expr)) = stmt {
+                        let return_type = check_expression(expr, &mut method_env)?;
+                        return_types.push(return_type);
+                    } else {
+                        check_statement(stmt, &mut method_env)?;
+                    }
                 }
+                let return_type = if return_types.is_empty() {
+                    TypeAnnotation::Void
+                } else {
+                    infer_common_type(&method_env, &return_types)
+                };
+                class_methods.insert(method.name.clone(), return_type);
             }
+            
+            // 检查接口实现（暂时跳过，因为 Statement::ClassDeclaration 没有 implements 字段）
+            let _ = class_methods;
         }
-        Statement::InterfaceDeclaration { name, extends, members } => {
+        Statement::InterfaceDeclaration { name, extends, members, .. } => {
             let mut interface_members = vec![];
             // 处理继承的接口
             for base in extends {
@@ -257,7 +370,7 @@ fn check_statement(statement: &Statement, env: &mut TypeEnvironment) -> Result<(
             // 添加接口到类型环境
             env.add_interface(name.clone(), interface_members);
         }
-        Statement::TypeAlias { name, ty } => {
+        Statement::TypeAlias { name, ty, .. } => {
             // 添加类型别名到类型环境
             env.add_type_alias(name.clone(), ty.clone());
         }
@@ -363,14 +476,126 @@ fn check_expression(expr: &Expression, env: &mut TypeEnvironment) -> Result<Type
             // 检查左右表达式
             let left_type = check_expression(left, env)?;
             let right_type = check_expression(right, env)?;
-            // 简化的类型检查，实际需要根据操作符进行更复杂的类型检查
-            Ok(TypeAnnotation::Any)
+            
+            // 根据操作符进行类型检查
+            match op {
+                BinaryOp::Add => {
+                    // 加法操作：数字+数字，字符串+字符串，或其中一个是字符串
+                    let is_left_number = matches!(&left_type, TypeAnnotation::Primitive(PrimitiveType::Number));
+                    let is_right_number = matches!(&right_type, TypeAnnotation::Primitive(PrimitiveType::Number));
+                    let is_left_string = matches!(&left_type, TypeAnnotation::Primitive(PrimitiveType::String));
+                    let is_right_string = matches!(&right_type, TypeAnnotation::Primitive(PrimitiveType::String));
+                    
+                    if is_left_number && is_right_number {
+                        Ok(TypeAnnotation::Primitive(PrimitiveType::Number))
+                    } else if is_left_string || is_right_string {
+                        Ok(TypeAnnotation::Primitive(PrimitiveType::String))
+                    } else {
+                        Err(TsError::TypeError(format!(
+                            "Operator '+' cannot be applied to types '{}' and '{}'",
+                            format_type(&left_type),
+                            format_type(&right_type)
+                        )))
+                    }
+                }
+                typescript_ir::BinaryOperator::Subtract | 
+                typescript_ir::BinaryOperator::Multiply | 
+                typescript_ir::BinaryOperator::Divide | 
+                typescript_ir::BinaryOperator::Modulus => {
+                    // 算术操作：两边都必须是数字
+                    let is_left_number = matches!(&left_type, TypeAnnotation::Primitive(PrimitiveType::Number));
+                    let is_right_number = matches!(&right_type, TypeAnnotation::Primitive(PrimitiveType::Number));
+                    
+                    if is_left_number && is_right_number {
+                        Ok(TypeAnnotation::Primitive(PrimitiveType::Number))
+                    } else {
+                        Err(TsError::TypeError(format!(
+                            "Operator '{:?}' cannot be applied to types '{}' and '{}'",
+                            op, format_type(&left_type), format_type(&right_type)
+                        )))
+                    }
+                }
+                typescript_ir::BinaryOperator::Equal | 
+                typescript_ir::BinaryOperator::NotEqual | 
+                typescript_ir::BinaryOperator::StrictEqual | 
+                typescript_ir::BinaryOperator::StrictNotEqual => {
+                    // 比较操作：返回布尔值
+                    Ok(TypeAnnotation::Primitive(PrimitiveType::Boolean))
+                }
+                typescript_ir::BinaryOperator::LessThan | 
+                typescript_ir::BinaryOperator::LessThanOrEqual | 
+                typescript_ir::BinaryOperator::GreaterThan | 
+                typescript_ir::BinaryOperator::GreaterThanOrEqual => {
+                    // 比较操作：两边都必须是数字或字符串
+                    let is_left_number = matches!(&left_type, TypeAnnotation::Primitive(PrimitiveType::Number));
+                    let is_right_number = matches!(&right_type, TypeAnnotation::Primitive(PrimitiveType::Number));
+                    let is_left_string = matches!(&left_type, TypeAnnotation::Primitive(PrimitiveType::String));
+                    let is_right_string = matches!(&right_type, TypeAnnotation::Primitive(PrimitiveType::String));
+                    
+                    if (is_left_number && is_right_number) || (is_left_string && is_right_string) {
+                        Ok(TypeAnnotation::Primitive(PrimitiveType::Boolean))
+                    } else {
+                        Err(TsError::TypeError(format!(
+                            "Operator '{:?}' cannot be applied to types '{}' and '{}'",
+                            op, format_type(&left_type), format_type(&right_type)
+                        )))
+                    }
+                }
+                typescript_ir::BinaryOperator::LogicalAnd | 
+                typescript_ir::BinaryOperator::LogicalOr => {
+                    // 逻辑操作：返回第一个操作数的类型（短路求值）
+                    Ok(left_type)
+                }
+                _ => {
+                    // 其他操作符：简化处理
+                    Ok(TypeAnnotation::Any)
+                }
+            }
         }
         Expression::Unary { op, expr } => {
             // 检查表达式
             let expr_type = check_expression(expr, env)?;
-            // 简化的类型检查
-            Ok(TypeAnnotation::Any)
+            
+            // 根据操作符进行类型检查
+            match op {
+                UnaryOp::Negation => {
+                    // 否定操作：操作数必须是布尔值
+                    if matches!(&expr_type, TypeAnnotation::Primitive(PrimitiveType::Boolean)) {
+                        Ok(TypeAnnotation::Primitive(PrimitiveType::Boolean))
+                    } else {
+                        Err(TsError::TypeError(format!(
+                            "Operator '!' cannot be applied to type '{}'",
+                            format_type(&expr_type)
+                        )))
+                    }
+                }
+                typescript_ir::UnaryOperator::Minus => {
+                    // 负号操作：操作数必须是数字
+                    if matches!(&expr_type, TypeAnnotation::Primitive(PrimitiveType::Number)) {
+                        Ok(TypeAnnotation::Primitive(PrimitiveType::Number))
+                    } else {
+                        Err(TsError::TypeError(format!(
+                            "Operator '-' cannot be applied to type '{}'",
+                            format_type(&expr_type)
+                        )))
+                    }
+                }
+                typescript_ir::UnaryOperator::Plus => {
+                    // 正号操作：操作数必须是数字
+                    if matches!(&expr_type, TypeAnnotation::Primitive(PrimitiveType::Number)) {
+                        Ok(TypeAnnotation::Primitive(PrimitiveType::Number))
+                    } else {
+                        Err(TsError::TypeError(format!(
+                            "Operator '+' cannot be applied to type '{}'",
+                            format_type(&expr_type)
+                        )))
+                    }
+                }
+                _ => {
+                    // 其他操作符：简化处理
+                    Ok(TypeAnnotation::Any)
+                }
+            }
         }
         Expression::Call { callee, args } => {
             // 检查调用表达式
@@ -378,34 +603,77 @@ fn check_expression(expr: &Expression, env: &mut TypeEnvironment) -> Result<Type
             // 检查参数
             let arg_types: Vec<TypeAnnotation> = args.iter().map(|arg| check_expression(arg, env)).collect::<Result<_, _>>()?;
 
-            // 根据函数类型检查参数类型
-            match callee_type {
-                TypeAnnotation::Function { params: func_params, return_type } => {
-                    if arg_types.len() != func_params.len() {
-                        return Err(TsError::TypeError(format!(
-                            "Expected {} arguments, but got {}",
-                            func_params.len(),
-                            arg_types.len()
-                        )));
-                    }
+            // 检查是否是类型守卫函数调用
+            if let Expression::Identifier(name) = callee.as_ref() {
+                // 简化处理：检查是否是 typeof 或 instanceof 调用
+                if name == "typeof" && args.len() == 1 {
+                    // typeof 操作符：返回字符串类型
+                    Ok(TypeAnnotation::Primitive(PrimitiveType::String))
+                } else if name == "instanceof" && args.len() == 2 {
+                    // instanceof 操作符：返回布尔类型
+                    Ok(TypeAnnotation::Primitive(PrimitiveType::Boolean))
+                } else {
+                    // 普通函数调用
+                    match callee_type {
+                        TypeAnnotation::Function { params: func_params, return_type } => {
+                            if arg_types.len() != func_params.len() {
+                                return Err(TsError::TypeError(format!(
+                                    "Expected {} arguments, but got {}",
+                                    func_params.len(),
+                                    arg_types.len()
+                                )));
+                            }
 
-                    // 检查每个参数的类型是否兼容
-                    for (i, (arg_type, func_param_type)) in arg_types.iter().zip(func_params.iter()).enumerate() {
-                        if !env.is_compatible(arg_type, func_param_type) {
-                            return Err(TsError::TypeError(format!(
-                                "Argument {} type '{}' is not compatible with parameter type '{}'",
-                                i,
-                                format_type(arg_type),
-                                format_type(func_param_type)
-                            )));
+                            // 检查每个参数的类型是否兼容
+                            for (i, (arg_type, func_param_type)) in arg_types.iter().zip(func_params.iter()).enumerate() {
+                                if !env.is_compatible(arg_type, func_param_type) {
+                                    return Err(TsError::TypeError(format!(
+                                        "Argument {} type '{}' is not compatible with parameter type '{}'",
+                                        i,
+                                        format_type(arg_type),
+                                        format_type(func_param_type)
+                                    )));
+                                }
+                            }
+
+                            Ok(*return_type)
+                        }
+                        _ => {
+                            // 非函数类型调用，返回 Any 类型
+                            Ok(TypeAnnotation::Any)
                         }
                     }
-
-                    Ok(*return_type)
                 }
-                _ => {
-                    // 非函数类型调用，返回 Any 类型
-                    Ok(TypeAnnotation::Any)
+            } else {
+                // 普通函数调用
+                match callee_type {
+                    TypeAnnotation::Function { params: func_params, return_type } => {
+                        if arg_types.len() != func_params.len() {
+                            return Err(TsError::TypeError(format!(
+                                "Expected {} arguments, but got {}",
+                                func_params.len(),
+                                arg_types.len()
+                            )));
+                        }
+
+                        // 检查每个参数的类型是否兼容
+                        for (i, (arg_type, func_param_type)) in arg_types.iter().zip(func_params.iter()).enumerate() {
+                            if !env.is_compatible(arg_type, func_param_type) {
+                                return Err(TsError::TypeError(format!(
+                                    "Argument {} type '{}' is not compatible with parameter type '{}'",
+                                    i,
+                                    format_type(arg_type),
+                                    format_type(func_param_type)
+                                )));
+                            }
+                        }
+
+                        Ok(*return_type)
+                    }
+                    _ => {
+                        // 非函数类型调用，返回 Any 类型
+                        Ok(TypeAnnotation::Any)
+                    }
                 }
             }
         }
@@ -486,20 +754,35 @@ fn check_expression(expr: &Expression, env: &mut TypeEnvironment) -> Result<Type
             Ok(TypeAnnotation::Union(vec![consequent_type, alternate_type]))
         }
         Expression::Function { params, body } => {
-            // 检查函数体
+            // 检查函数体并推断返回类型
             let mut func_env = env.clone();
             // 添加参数到函数环境
             for param in params {
                 func_env.add_variable(param.clone(), TypeAnnotation::Any);
             }
-            // 检查函数体语句
+            
+            // 检查函数体语句并收集返回表达式类型
+            let mut return_types = vec![];
             for stmt in body {
-                check_statement(stmt, &mut func_env)?;
+                if let Statement::Return(Some(expr)) = stmt {
+                    let return_type = check_expression(expr, &mut func_env)?;
+                    return_types.push(return_type);
+                } else {
+                    check_statement(stmt, &mut func_env)?;
+                }
             }
+            
+            // 推断返回类型
+            let return_type = if return_types.is_empty() {
+                TypeAnnotation::Void
+            } else {
+                infer_common_type(&func_env, &return_types)
+            };
+            
             // 返回函数类型
             Ok(TypeAnnotation::Function {
                 params: vec![TypeAnnotation::Any; params.len()],
-                return_type: Box::new(TypeAnnotation::Any),
+                return_type: Box::new(return_type),
             })
         }
         Expression::ArrowFunction { params, body } => {
@@ -537,7 +820,7 @@ fn format_type(ty: &TypeAnnotation) -> String {
             let types_str: Vec<String> = types.iter().map(format_type).collect();
             format!("({})", types_str.join(" & "))
         }
-        TypeAnnotation::Generic(name, args) => {
+        TypeAnnotation::Generic { name, args } => {
             let args_str: Vec<String> = args.iter().map(format_type).collect();
             format!("{}<{}>", name, args_str.join(", "))
         }

@@ -6,9 +6,13 @@ use std::rc::Rc;
 use typescript_ir::Program;
 use typescript_types::{ToTsValue, TsError, TsValue};
 
+use crate::language::TypeScriptLanguage as CustomTypeScriptLanguage;
+
 mod codegen;
-mod ffi;
+pub mod ffi;
 mod gc;
+pub mod language;
+pub mod platform;
 mod type_checker;
 mod vm;
 
@@ -56,15 +60,23 @@ impl TypeScript {
         // 使用 oak-typescript 进行词法分析和语法分析
         let language = TypeScriptLanguage::new();
         let builder = TypeScriptBuilder::new(&language);
-        let mut cache = oak_core::parser::ParseSession::<oak_typescript::TypeScriptLanguage>::default();
+        let mut cache = oak_core::parser::ParseSession::<TypeScriptLanguage>::default();
         let edits: &[oak_core::TextEdit] = &[];
         let build_result = builder.build(script, edits, &mut cache);
         let ast = build_result.result.map_err(|e| TsError::SyntaxError(e.to_string()))?;
         println!("Step 2: AST to IR conversion");
 
         // 将 oak-typescript AST 转换为 IR
-        let ir = typescript_ir::ast_to_ir::program(&ast);
-        println!("Step 3: VM execution");
+        let mut ir = typescript_ir::ast_to_ir::program(&ast)?;
+        println!("Step 3: IR optimization");
+
+        // 优化 IR
+        ir = typescript_ir::optimize_full(&ir);
+        println!("Step 4: Type checking");
+
+        // 类型检查
+        ir = type_checker::check(ir)?;
+        println!("Step 5: VM execution");
 
         // 虚拟机执行
         let mut vm = vm::VM::new(self.globals.clone());
@@ -87,7 +99,7 @@ pub fn test_lexer_parser() {
     // 使用 oak-typescript 进行词法分析和语法分析
     let language = TypeScriptLanguage::new();
     let builder = TypeScriptBuilder::new(&language);
-    let mut cache = oak_core::parser::ParseSession::<oak_typescript::TypeScriptLanguage>::default();
+    let mut cache = oak_core::parser::ParseSession::<TypeScriptLanguage>::default();
     let edits: &[oak_core::TextEdit] = &[];
     let build_result = builder.build(source, edits, &mut cache);
 
@@ -96,11 +108,40 @@ pub fn test_lexer_parser() {
             println!("AST: {:?}", ast);
 
             // 转换为 IR 并打印
-            let ir = typescript_ir::ast_to_ir::program(&ast);
-            println!("IR: {:?}", ir);
+            match typescript_ir::ast_to_ir::program(&ast) {
+                Ok(ir) => println!("IR: {:?}", ir),
+                Err(error) => println!("IR conversion error: {:?}", error),
+            }
         }
         Err(error) => {
             println!("Build error: {:?}", error);
         }
+    }
+}
+
+/// 创建 TypeScript 运行时实例
+///
+/// 这是一个工厂函数，用于创建并返回一个新的 TypeScript 实例。
+///
+/// # 返回
+/// 返回一个新创建的 TypeScript 实例
+pub fn create_runtime() -> TypeScript {
+    TypeScript::new()
+}
+
+/// 执行 TypeScript 脚本
+///
+/// 这是一个便捷函数，直接在给定的运行时实例上执行脚本。
+///
+/// # 参数
+/// - `runtime`: TypeScript 运行时实例的可变引用
+/// - `script`: 要执行的 TypeScript 脚本字符串
+///
+/// # 返回
+/// 返回脚本执行结果的字符串表示，或错误信息
+pub fn run_script(runtime: &mut TypeScript, script: &str) -> Result<String, TsError> {
+    match runtime.execute_script(script) {
+        Ok(value) => Ok(value.to_string()),
+        Err(error) => Err(error),
     }
 }
