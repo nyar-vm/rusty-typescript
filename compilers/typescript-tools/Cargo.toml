@@ -35,8 +35,8 @@ num_cpus = { workspace = true }
 rayon = { workspace = true }
 
 # 日志相关
-log = { workspace = true }
-env_logger = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
 
 [target.'cfg(windows)'.dependencies]
 winapi = { workspace = true }
@@ -51,32 +51,3 @@ path = "bin/tsc.rs"
 [[bin]]
 name = "tsup"
 path = "bin/tsup.rs"
-
-# 暂时注释掉其他命令，等实现后再添加
-# [[bin]]
-# name = "rts"
-# path = "src/bin/rts.rs"
-# 
-# [[bin]]
-# name = "rts-check"
-# path = "src/bin/rts-check.rs"
-# 
-# [[bin]]
-# name = "rts-build"
-# path = "src/bin/rts-build.rs"
-# 
-# [[bin]]
-# name = "rts-fmt"
-# path = "src/bin/rts-fmt.rs"
-# 
-# [[bin]]
-# name = "rts-test"
-# path = "src/bin/rts-test.rs"
-# 
-# [[bin]]
-# name = "rts-analyze"
-# path = "src/bin/rts-analyze.rs"
-# 
-# [[bin]]
-# name = "rts-run"
-# path = "src/bin/rts-run.rs"

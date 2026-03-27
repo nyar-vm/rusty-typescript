@@ -229,9 +229,6 @@ impl WebIdlTypeChecker {
                         return false;
                     }
                 }
-                _ => {
-                    // 忽略未知类型
-                }
             }
         }
 

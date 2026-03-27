@@ -21,7 +21,8 @@ typescript-ir = { workspace = true }
 futures = { workspace = true }
 tokio = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
-log = { workspace = true }
-tower-lsp = { workspace = true }
-lsp-types = { workspace = true }
-
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+oak-lsp = { workspace = true }
+oak-core = { workspace = true }
+oak-vfs = { workspace = true }

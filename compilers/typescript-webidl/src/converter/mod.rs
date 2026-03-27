@@ -180,9 +180,6 @@ pub fn convert(root: &IdlRoot) -> String {
                 convert_module(module, &mut result);
                 result.push_str("\n");
             }
-            _ => {
-                println!("未知类型: {:?}", item);
-            }
         }
     }
 

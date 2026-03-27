@@ -2,6 +2,7 @@ use clap::Parser;
 use num_cpus;
 use std::{path::PathBuf, sync::Arc};
 use tokio::{runtime::Builder, task};
+use tracing::debug;
 use typescript_tools::{
     config::load_config,
     execute_file, init,
@@ -98,7 +99,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
 
     // 打印命令行参数，用于调试
-    log::debug!("CLI arguments: {:?}", cli);
+    debug!("CLI arguments: {:?}", cli);
 
     // 处理 WebIDL 文件
     if !cli.webidl_files.is_empty() {
@@ -124,7 +125,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             Ok(config) => {
                 println!("配置文件加载成功!");
                 // 这里可以根据配置文件设置编译选项
-                log::debug!("配置: {:?}", config);
+                debug!("配置: {:?}", config);
             }
             Err(e) => {
                 eprintln!("错误: 无法加载配置文件: {}", e);

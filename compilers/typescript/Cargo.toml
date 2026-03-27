@@ -18,8 +18,8 @@ typescript-types = { workspace = true }
 typescript-ir = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
-log = { workspace = true }
-env_logger = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
 rand = { workspace = true }
 num_cpus = { workspace = true }
 sha2 = { workspace = true }

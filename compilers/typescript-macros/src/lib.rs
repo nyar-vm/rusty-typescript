@@ -1,5 +1,10 @@
 #![warn(missing_docs)]
 
+//! TypeScript macros for Rust
+//! 
+//! This crate provides procedural macros for generating TypeScript type definitions
+//! from Rust code, enabling seamless type-safe interaction between Rust and TypeScript.
+
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::{DeriveInput, ItemFn, parse_macro_input};
@@ -168,7 +173,7 @@ pub fn typescript_class_derive(input: TokenStream) -> TokenStream {
 /// type AddFunction = (a: number, b: number) => number;
 /// ```
 #[proc_macro_attribute]
-pub fn TypescriptFunction(_args: TokenStream, input: TokenStream) -> TokenStream {
+pub fn typescript_function(_args: TokenStream, input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as ItemFn);
 
     // 解析函数名称

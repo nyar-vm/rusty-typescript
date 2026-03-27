@@ -27,7 +27,7 @@ pub extern "C" fn _start() {
 #[unsafe(no_mangle)]
 pub extern "C" fn compile(code: *const u8, code_len: usize) -> *mut u8 {
     // 实现 compile 方法
-    let code_str = unsafe { std::str::from_utf8(std::slice::from_raw_parts(code, code_len)) }.unwrap_or("");
+    let _code_str = unsafe { std::str::from_utf8(std::slice::from_raw_parts(code, code_len)) }.unwrap_or("");
     let result = format!("{{\"success\": true, \"message\": \"Compiled TypeScript code successfully\"}}");
     let c_string = std::ffi::CString::new(result).unwrap();
     c_string.into_raw() as *mut u8
@@ -44,7 +44,7 @@ pub extern "C" fn compile(code: *const u8, code_len: usize) -> *mut u8 {
 #[unsafe(no_mangle)]
 pub extern "C" fn execute(code: *const u8, code_len: usize) -> *mut u8 {
     // 实现 execute 方法
-    let code_str = unsafe { std::str::from_utf8(std::slice::from_raw_parts(code, code_len)) }.unwrap_or("");
+    let _code_str = unsafe { std::str::from_utf8(std::slice::from_raw_parts(code, code_len)) }.unwrap_or("");
     let result = format!("{{\"success\": true, \"result\": \"Executed TypeScript code successfully\"}}");
     let c_string = std::ffi::CString::new(result).unwrap();
     c_string.into_raw() as *mut u8
@@ -59,7 +59,7 @@ pub extern "C" fn execute(code: *const u8, code_len: usize) -> *mut u8 {
 /// # Returns
 /// A pointer to a JSON array containing compilation errors
 #[unsafe(no_mangle)]
-pub extern "C" fn get_compilation_errors(code: *const u8, _code_len: usize) -> *mut u8 {
+pub extern "C" fn get_compilation_errors(_code: *const u8, _code_len: usize) -> *mut u8 {
     // 实现 get_compilation_errors 方法
     let result = "[]".to_string();
     let c_string = std::ffi::CString::new(result).unwrap();

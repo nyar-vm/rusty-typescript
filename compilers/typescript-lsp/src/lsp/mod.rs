@@ -1,23 +1,38 @@
 #![doc = include_str!("readme.md")]
 
-use std::{collections::HashMap, fs::File, io::Read, sync::Arc};
-use tower_lsp::{Client, LanguageServer, LspService, Server, jsonrpc::Result, lsp_types::*};
+use core::range::Range;
+use oak_core::language::Language;
+use oak_lsp::{
+    LanguageService, WorkspaceManager,
+    types::{
+        CodeAction, CompletionItem, Diagnostic, DocumentHighlight, FoldingRange, Hover,
+        InitializeParams, InlayHint, LocationRange, SemanticTokens, SignatureHelp,
+        StructureItem, TextEdit, WorkspaceEdit, WorkspaceSymbol,
+    },
+};
+use oak_vfs::{MemoryVfs, Vfs, WritableVfs};
+use std::{collections::HashMap, sync::Arc};
+use typescript::TypeScriptLanguage;
 
 pub mod formatter;
 
-use crate::lsp::formatter::{FormatOptions, format_code_with_options, format_range as format_code_range};
+use formatter::{FormatOptions, format_code_with_options, format_range as format_code_range};
 
-/// TypeScript language service.
-#[derive(Clone)]
+/// TypeScript language service implementing oak-lsp's LanguageService trait.
 pub struct TypeScriptLanguageService {
-    client: Arc<Client>,
+    vfs: MemoryVfs,
+    workspace: WorkspaceManager,
     documents: Arc<std::sync::Mutex<HashMap<String, String>>>,
 }
 
 impl TypeScriptLanguageService {
     /// Creates a new `TypeScriptLanguageService`.
-    pub fn new(client: Arc<Client>) -> Self {
-        Self { client, documents: Arc::new(std::sync::Mutex::new(HashMap::new())) }
+    pub fn new() -> Self {
+        Self {
+            vfs: MemoryVfs::new(),
+            workspace: WorkspaceManager::new(),
+            documents: Arc::new(std::sync::Mutex::new(HashMap::new())),
+        }
     }
 
     /// Get document content by URI
@@ -29,17 +44,14 @@ impl TypeScriptLanguageService {
     /// Set document content by URI
     async fn set_document(&self, uri: String, content: String) {
         let mut documents = self.documents.lock().unwrap();
-        documents.insert(uri, content);
+        documents.insert(uri.clone(), content.clone());
+        // Also update VFS
+        self.vfs.write_file(&uri, content.into_bytes());
     }
 
     /// Get file content from disk if not in memory
     fn get_file_content(&self, uri: &str) -> Option<String> {
-        // Convert URI to file path
-        let file_path = uri.replace("file://", "");
-        let mut file = File::open(file_path).ok()?;
-        let mut content = String::new();
-        file.read_to_string(&mut content).ok()?;
-        Some(content)
+        self.vfs.read_file_to_string(uri)
     }
 
     /// Extract symbol at position
@@ -53,8 +65,7 @@ impl TypeScriptLanguageService {
             if ch.is_alphanumeric() || ch == '_' || ch == '$' {
                 symbol.insert(0, ch);
                 current_pos -= 1;
-            }
-            else {
+            } else {
                 break;
             }
         }
@@ -66,13 +77,16 @@ impl TypeScriptLanguageService {
             if ch.is_alphanumeric() || ch == '_' || ch == '$' {
                 symbol.push(ch);
                 current_pos += 1;
-            }
-            else {
+            } else {
                 break;
             }
         }
 
-        if symbol.is_empty() { None } else { Some(symbol) }
+        if symbol.is_empty() {
+            None
+        } else {
+            Some(symbol)
+        }
     }
 
     /// Get offset from line and column
@@ -88,8 +102,7 @@ impl TypeScriptLanguageService {
             if c == '\n' {
                 current_line += 1;
                 offset = 0;
-            }
-            else {
+            } else {
                 offset += 1;
             }
         }
@@ -109,8 +122,7 @@ impl TypeScriptLanguageService {
             if c == '\n' {
                 line += 1;
                 col = 0;
-            }
-            else {
+            } else {
                 col += 1;
             }
         }
@@ -140,10 +152,10 @@ impl TypeScriptLanguageService {
     }
 
     /// Parse format options
-    fn parse_format_options(&self, options: &FormattingOptions) -> FormatOptions {
+    fn parse_format_options(&self, tab_size: u32, insert_spaces: bool) -> FormatOptions {
         FormatOptions {
-            indent_size: options.tab_size,
-            use_tabs: !options.insert_spaces,
+            indent_size: tab_size,
+            use_tabs: !insert_spaces,
             line_width: 80,                // Default
             space_before_brace: true,      // Default
             space_after_comma: true,       // Default
@@ -160,26 +172,19 @@ impl TypeScriptLanguageService {
 
         if expr.starts_with('"') || expr.starts_with('\'') {
             return "string".to_string();
-        }
-        else if expr == "true" || expr == "false" {
+        } else if expr == "true" || expr == "false" {
             return "boolean".to_string();
-        }
-        else if expr.starts_with('{') && expr.ends_with('}') {
+        } else if expr.starts_with('{') && expr.ends_with('}') {
             return "object".to_string();
-        }
-        else if expr.starts_with('[') && expr.ends_with(']') {
+        } else if expr.starts_with('[') && expr.ends_with(']') {
             return "any[]".to_string();
-        }
-        else if expr.parse::<i64>().is_ok() || expr.parse::<f64>().is_ok() {
+        } else if expr.parse::<i64>().is_ok() || expr.parse::<f64>().is_ok() {
             return "number".to_string();
-        }
-        else if expr == "null" {
+        } else if expr == "null" {
             return "null".to_string();
-        }
-        else if expr == "undefined" {
+        } else if expr == "undefined" {
             return "undefined".to_string();
-        }
-        else if expr.starts_with("function") || expr.contains("=>") {
+        } else if expr.starts_with("function") || expr.contains("=>") {
             return "Function".to_string();
         }
 
@@ -187,429 +192,343 @@ impl TypeScriptLanguageService {
     }
 }
 
-#[tower_lsp::async_trait]
-impl LanguageServer for TypeScriptLanguageService {
-    async fn initialize(&self, _: InitializeParams) -> Result<InitializeResult> {
-        Ok(InitializeResult {
-            capabilities: ServerCapabilities {
-                text_document_sync: Some(TextDocumentSyncCapability::Kind(TextDocumentSyncKind::INCREMENTAL)),
-                completion_provider: Some(CompletionOptions {
-                    resolve_provider: Some(false),
-                    trigger_characters: Some(vec!["/".to_string(), ".".to_string()]),
-                    ..Default::default()
-                }),
-                hover_provider: Some(HoverProviderCapability::Simple(true)),
-                definition_provider: Some(OneOf::Left(true)),
-                references_provider: Some(OneOf::Left(true)),
-                document_symbol_provider: Some(OneOf::Left(true)),
-                workspace_symbol_provider: Some(OneOf::Left(true)),
-                code_action_provider: Some(CodeActionProviderCapability::Simple(true)),
-                document_formatting_provider: Some(OneOf::Left(true)),
-                document_range_formatting_provider: Some(OneOf::Left(true)),
-                signature_help_provider: Some(SignatureHelpOptions {
-                    trigger_characters: Some(vec!["(".to_string(), ",".to_string()]),
-                    ..Default::default()
-                }),
-                type_definition_provider: Some(TypeDefinitionProviderCapability::Simple(true)),
-                implementation_provider: Some(ImplementationProviderCapability::Simple(true)),
-                rename_provider: Some(OneOf::Left(true)),
-                document_highlight_provider: Some(OneOf::Left(true)),
-                folding_range_provider: Some(FoldingRangeProviderCapability::Simple(true)),
-                semantic_tokens_provider: Some(SemanticTokensServerCapabilities::SemanticTokensOptions(
-                    SemanticTokensOptions {
-                        legend: SemanticTokensLegend {
-                            token_types: vec![
-                                SemanticTokenType::VARIABLE,
-                                SemanticTokenType::FUNCTION,
-                                SemanticTokenType::CLASS,
-                                SemanticTokenType::INTERFACE,
-                                SemanticTokenType::TYPE,
-                                SemanticTokenType::KEYWORD,
-                                SemanticTokenType::STRING,
-                                SemanticTokenType::NUMBER,
-                                SemanticTokenType::COMMENT,
-                            ],
-                            token_modifiers: vec![],
-                        },
-                        range: Some(true),
-                        full: Some(SemanticTokensFullOptions::Bool(true)),
-                        ..Default::default()
-                    },
-                )),
-                inlay_hint_provider: Some(OneOf::Left(true)),
-                ..Default::default()
-            },
-            ..Default::default()
-        })
+impl LanguageService for TypeScriptLanguageService {
+    type Lang = TypeScriptLanguage;
+    type Vfs = MemoryVfs;
+
+    fn vfs(&self) -> &Self::Vfs {
+        &self.vfs
     }
 
-    async fn initialized(&self, _: InitializedParams) {
-        self.client.log_message(tower_lsp::lsp_types::MessageType::INFO, "TypeScript LSP server initialized").await;
+    fn workspace(&self) -> &WorkspaceManager {
+        &self.workspace
     }
 
-    async fn shutdown(&self) -> Result<()> {
-        Ok(())
-    }
+    async fn hover(&self, uri: &str, range: Range<usize>) -> Option<Hover> {
+        let content = self.get_document(uri).await.or_else(|| self.get_file_content(uri))?;
 
-    async fn did_open(&self, params: DidOpenTextDocumentParams) {
-        self.set_document(params.text_document.uri.to_string(), params.text_document.text).await;
-    }
-
-    async fn did_change(&self, params: DidChangeTextDocumentParams) {
-        if let Some(content) = params.content_changes.into_iter().last() {
-            self.set_document(params.text_document.uri.to_string(), content.text).await;
+        if let Some(symbol_name) = self.extract_symbol_at_position(&content, range.start) {
+            Some(Hover {
+                contents: format!("**{}**\n\nType: any", symbol_name),
+                range: Some(range),
+            })
+        } else {
+            None
         }
     }
 
-    async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
-        let uri = params.text_document_position_params.text_document.uri.to_string();
-        let position = params.text_document_position_params.position;
+    async fn completion(&self, uri: &str, offset: usize) -> Vec<CompletionItem> {
+        let content = match self.get_document(uri).await.or_else(|| self.get_file_content(uri)) {
+            Some(c) => c,
+            None => return vec![],
+        };
 
-        if let Some(content) = self.get_document(&uri).await.or_else(|| self.get_file_content(&uri)) {
-            let offset = self.get_offset(&content, position.line as usize, position.character as usize);
-            if let Some(symbol_name) = self.extract_symbol_at_position(&content, offset) {
-                // Simple hover implementation
-                let hover = Hover {
-                    contents: HoverContents::Markup(MarkupContent {
-                        kind: MarkupKind::Markdown,
-                        value: format!("**{symbol_name}**\n\nType: any"),
-                    }),
-                    range: None,
-                };
-                return Ok(Some(hover));
-            }
+        let _ = offset;
+        let mut completions = Vec::new();
+
+        // Add keywords
+        let keywords = vec![
+            "abstract", "any", "as", "async", "await", "boolean", "break", "case", "catch",
+            "class", "const", "continue", "debugger", "default", "delete", "do", "else", "enum",
+            "export", "extends", "false", "finally", "for", "function", "if", "implements",
+            "import", "in", "infer", "interface", "let", "module", "namespace", "never", "new",
+            "null", "number", "object", "package", "private", "protected", "public", "readonly",
+            "require", "return", "static", "string", "super", "switch", "this", "throw", "true",
+            "try", "type", "typeof", "var", "void", "while", "with", "yield",
+        ];
+
+        for keyword in keywords {
+            completions.push(CompletionItem {
+                label: keyword.to_string(),
+                kind: Some(oak_lsp::types::CompletionItemKind::Keyword),
+                detail: Some("Keyword".to_string()),
+                documentation: None,
+                insert_text: Some(keyword.to_string()),
+            });
         }
 
-        Ok(None)
+        completions
     }
 
-    async fn completion(&self, params: CompletionParams) -> Result<Option<CompletionResponse>> {
-        let uri = params.text_document_position.text_document.uri.to_string();
-        let position = params.text_document_position.position;
+    async fn definition(&self, uri: &str, range: Range<usize>) -> Vec<LocationRange> {
+        let content = match self.get_document(uri).await.or_else(|| self.get_file_content(uri)) {
+            Some(c) => c,
+            None => return vec![],
+        };
 
-        if let Some(content) = self.get_document(&uri).await.or_else(|| self.get_file_content(&uri)) {
-            let _offset = self.get_offset(&content, position.line as usize, position.character as usize);
+        let symbol_name = match self.extract_symbol_at_position(&content, range.start) {
+            Some(s) => s,
+            None => return vec![],
+        };
 
-            // Simple completion implementation
-            let mut completions = Vec::new();
+        let mut locations = Vec::new();
+        let lines: Vec<&str> = content.lines().collect();
 
-            // Add keywords
-            let keywords = vec![
-                "abstract",
-                "any",
-                "as",
-                "async",
-                "await",
-                "boolean",
-                "break",
-                "case",
-                "catch",
-                "class",
-                "const",
-                "continue",
-                "debugger",
-                "default",
-                "delete",
-                "do",
-                "else",
-                "enum",
-                "export",
-                "extends",
-                "false",
-                "finally",
-                "for",
-                "function",
-                "if",
-                "implements",
-                "import",
-                "in",
-                "infer",
-                "interface",
-                "let",
-                "module",
-                "namespace",
-                "never",
-                "new",
-                "null",
-                "number",
-                "object",
-                "package",
-                "private",
-                "protected",
-                "public",
-                "readonly",
-                "require",
-                "return",
-                "static",
-                "string",
-                "super",
-                "switch",
-                "this",
-                "throw",
-                "true",
-                "try",
-                "type",
-                "typeof",
-                "var",
-                "void",
-                "while",
-                "with",
-                "yield",
-            ];
-
-            for keyword in keywords {
-                completions.push(CompletionItem {
-                    label: keyword.to_string(),
-                    kind: Some(tower_lsp::lsp_types::CompletionItemKind::KEYWORD),
-                    detail: Some("Keyword".to_string()),
-                    documentation: None,
-                    insert_text: Some(keyword.to_string()),
-                    ..Default::default()
-                });
-            }
-
-            return Ok(Some(CompletionResponse::Array(completions)));
-        }
-
-        Ok(None)
-    }
-
-    async fn goto_definition(&self, params: GotoDefinitionParams) -> Result<Option<GotoDefinitionResponse>> {
-        let uri = params.text_document_position_params.text_document.uri.to_string();
-        let position = params.text_document_position_params.position;
-
-        if let Some(content) = self.get_document(&uri).await.or_else(|| self.get_file_content(&uri)) {
-            let offset = self.get_offset(&content, position.line as usize, position.character as usize);
-            if let Some(symbol_name) = self.extract_symbol_at_position(&content, offset) {
-                // Simple definition implementation
-                let lines: Vec<&str> = content.lines().collect();
-                for (line_idx, line) in lines.iter().enumerate() {
-                    if line.contains(&format!(" {} ", symbol_name))
-                        || line.starts_with(&format!("{} ", symbol_name))
-                        || line.ends_with(&format!(" {}", symbol_name))
-                    {
-                        let location = Location {
-                            uri: params.text_document_position_params.text_document.uri.clone(),
-                            range: Range {
-                                start: Position { line: line_idx as u32, character: 0 },
-                                end: Position { line: line_idx as u32, character: line.len() as u32 },
-                            },
-                        };
-                        return Ok(Some(GotoDefinitionResponse::Scalar(location)));
-                    }
-                }
-            }
-        }
-
-        Ok(None)
-    }
-
-    async fn references(&self, params: ReferenceParams) -> Result<Option<Vec<Location>>> {
-        let uri = params.text_document_position.text_document.uri.to_string();
-        let position = params.text_document_position.position;
-
-        if let Some(content) = self.get_document(&uri).await.or_else(|| self.get_file_content(&uri)) {
-            let offset = self.get_offset(&content, position.line as usize, position.character as usize);
-            if let Some(symbol_name) = self.extract_symbol_at_position(&content, offset) {
-                // Simple references implementation
-                let mut references = Vec::new();
-                let lines: Vec<&str> = content.lines().collect();
-
-                for (line_idx, line) in lines.iter().enumerate() {
-                    let mut current_pos = 0;
-                    while let Some(start) = line[current_pos..].find(&symbol_name) {
-                        let actual_start = current_pos + start;
-                        let end = actual_start + symbol_name.len();
-
-                        if self.is_complete_symbol(line, actual_start, end) {
-                            let location = Location {
-                                uri: params.text_document_position.text_document.uri.clone(),
-                                range: Range {
-                                    start: Position { line: line_idx as u32, character: actual_start as u32 },
-                                    end: Position { line: line_idx as u32, character: end as u32 },
-                                },
-                            };
-                            references.push(location);
-                        }
-
-                        current_pos = end;
-                    }
-                }
-
-                return Ok(Some(references));
-            }
-        }
-
-        Ok(None)
-    }
-
-    async fn document_symbol(&self, params: DocumentSymbolParams) -> Result<Option<DocumentSymbolResponse>> {
-        let uri = params.text_document.uri.to_string();
-
-        if let Some(content) = self.get_document(&uri).await.or_else(|| self.get_file_content(&uri)) {
-            // Simple document symbol implementation
-            let mut symbols = Vec::new();
-            let lines: Vec<&str> = content.lines().collect();
-
-            for (line_idx, line) in lines.iter().enumerate() {
-                if line.starts_with("class ") {
-                    let parts: Vec<&str> = line.split_whitespace().collect();
-                    if parts.len() >= 2 {
-                        let class_name = parts[1].trim();
-                        symbols.push(DocumentSymbol {
-                            name: class_name.to_string(),
-                            kind: tower_lsp::lsp_types::SymbolKind::CLASS,
-                            range: Range {
-                                start: Position { line: line_idx as u32, character: 0 },
-                                end: Position { line: line_idx as u32, character: line.len() as u32 },
-                            },
-                            selection_range: Range {
-                                start: Position { line: line_idx as u32, character: 6 },
-                                end: Position { line: line_idx as u32, character: (6 + class_name.len()) as u32 },
-                            },
-                            children: None,
-                            detail: None,
-                            tags: None,
-                            deprecated: None,
-                        });
-                    }
-                }
-                else if line.starts_with("function ") {
-                    let parts: Vec<&str> = line.split_whitespace().collect();
-                    if parts.len() >= 2 {
-                        let function_name = parts[1].split('(').next().unwrap_or("").trim();
-                        symbols.push(DocumentSymbol {
-                            name: function_name.to_string(),
-                            kind: tower_lsp::lsp_types::SymbolKind::FUNCTION,
-                            range: Range {
-                                start: Position { line: line_idx as u32, character: 0 },
-                                end: Position { line: line_idx as u32, character: line.len() as u32 },
-                            },
-                            selection_range: Range {
-                                start: Position { line: line_idx as u32, character: 9 },
-                                end: Position { line: line_idx as u32, character: (9 + function_name.len()) as u32 },
-                            },
-                            children: None,
-                            detail: None,
-                            tags: None,
-                            deprecated: None,
-                        });
-                    }
-                }
-                else if line.starts_with("const ") || line.starts_with("let ") || line.starts_with("var ") {
-                    let parts: Vec<&str> = line.split_whitespace().collect();
-                    if parts.len() >= 2 {
-                        let variable_name = parts[1].split(|c| c == '=' || c == ';' || c == ':').next().unwrap_or("").trim();
-                        symbols.push(DocumentSymbol {
-                            name: variable_name.to_string(),
-                            kind: tower_lsp::lsp_types::SymbolKind::VARIABLE,
-                            range: Range {
-                                start: Position { line: line_idx as u32, character: 0 },
-                                end: Position { line: line_idx as u32, character: line.len() as u32 },
-                            },
-                            selection_range: Range {
-                                start: Position { line: line_idx as u32, character: (parts[0].len() + 1) as u32 },
-                                end: Position {
-                                    line: line_idx as u32,
-                                    character: (parts[0].len() + 1 + variable_name.len()) as u32,
-                                },
-                            },
-                            children: None,
-                            detail: None,
-                            tags: None,
-                            deprecated: None,
-                        });
-                    }
-                }
-            }
-
-            return Ok(Some(DocumentSymbolResponse::Nested(symbols)));
-        }
-
-        Ok(None)
-    }
-
-    async fn code_action(&self, _params: CodeActionParams) -> Result<Option<Vec<CodeActionOrCommand>>> {
-        // Simple code action implementation
-        Ok(None)
-    }
-
-    async fn formatting(&self, params: DocumentFormattingParams) -> Result<Option<Vec<TextEdit>>> {
-        let uri = params.text_document.uri.to_string();
-
-        if let Some(content) = self.get_document(&uri).await.or_else(|| self.get_file_content(&uri)) {
-            let options = self.parse_format_options(&params.options);
-            let formatted_text = format_code_with_options(&content, options);
-
-            if formatted_text != content {
-                let edit = TextEdit {
+        for (line_idx, line) in lines.iter().enumerate() {
+            if line.contains(&format!(" {} ", symbol_name))
+                || line.starts_with(&format!("{} ", symbol_name))
+                || line.ends_with(&format!(" {}", symbol_name))
+            {
+                let line_offset = self.get_offset(&content, line_idx, 0);
+                let line_end = self.get_offset(&content, line_idx, line.len());
+                locations.push(LocationRange {
+                    uri: Arc::from(uri),
                     range: Range {
-                        start: Position { line: 0, character: 0 },
-                        end: Position { line: content.lines().count() as u32, character: 0 },
+                        start: line_offset,
+                        end: line_end,
                     },
-                    new_text: formatted_text,
-                };
-                return Ok(Some(vec![edit]));
+                });
+                break; // Return first definition
             }
         }
 
-        Ok(None)
+        locations
     }
 
-    async fn range_formatting(&self, params: DocumentRangeFormattingParams) -> Result<Option<Vec<TextEdit>>> {
-        let uri = params.text_document.uri.to_string();
+    async fn references(&self, uri: &str, range: Range<usize>) -> Vec<LocationRange> {
+        let content = match self.get_document(uri).await.or_else(|| self.get_file_content(uri)) {
+            Some(c) => c,
+            None => return vec![],
+        };
 
-        if let Some(content) = self.get_document(&uri).await.or_else(|| self.get_file_content(&uri)) {
-            let options = self.parse_format_options(&params.options);
-            let start_offset =
-                self.get_offset(&content, params.range.start.line as usize, params.range.start.character as usize);
-            let end_offset = self.get_offset(&content, params.range.end.line as usize, params.range.end.character as usize);
+        let symbol_name = match self.extract_symbol_at_position(&content, range.start) {
+            Some(s) => s,
+            None => return vec![],
+        };
 
-            let formatted_text = format_code_range(&content, start_offset, end_offset, options);
+        let mut references = Vec::new();
+        let lines: Vec<&str> = content.lines().collect();
 
-            if formatted_text != content {
-                let edit = TextEdit { range: params.range, new_text: formatted_text[start_offset..end_offset].to_string() };
-                return Ok(Some(vec![edit]));
+        for (line_idx, line) in lines.iter().enumerate() {
+            let mut current_pos = 0;
+            while let Some(start) = line[current_pos..].find(&symbol_name) {
+                let actual_start = current_pos + start;
+                let end = actual_start + symbol_name.len();
+
+                if self.is_complete_symbol(line, actual_start, end) {
+                    let start_offset = self.get_offset(&content, line_idx, actual_start);
+                    let end_offset = self.get_offset(&content, line_idx, end);
+                    references.push(LocationRange {
+                        uri: Arc::from(uri),
+                        range: Range {
+                            start: start_offset,
+                            end: end_offset,
+                        },
+                    });
+                }
+
+                current_pos = end;
             }
         }
 
-        Ok(None)
+        references
     }
 
-    async fn signature_help(&self, _params: SignatureHelpParams) -> Result<Option<SignatureHelp>> {
-        // Simple signature help implementation
-        Ok(None)
+    async fn document_symbols(&self, uri: &str) -> Vec<StructureItem> {
+        let content = match self.get_document(uri).await.or_else(|| self.get_file_content(uri)) {
+            Some(c) => c,
+            None => return vec![],
+        };
+
+        let mut symbols = Vec::new();
+        let lines: Vec<&str> = content.lines().collect();
+
+        for (line_idx, line) in lines.iter().enumerate() {
+            let line_offset = self.get_offset(&content, line_idx, 0);
+            let line_end = self.get_offset(&content, line_idx, line.len());
+            let range = Range {
+                start: line_offset,
+                end: line_end,
+            };
+
+            if line.starts_with("class ") {
+                let parts: Vec<&str> = line.split_whitespace().collect();
+                if parts.len() >= 2 {
+                    let class_name = parts[1].trim();
+                    let name_offset = self.get_offset(&content, line_idx, 6);
+                    let name_end = self.get_offset(&content, line_idx, 6 + class_name.len());
+                    symbols.push(StructureItem {
+                        name: class_name.to_string(),
+                        detail: None,
+                        role: oak_core::language::UniversalElementRole::Typing,
+                        kind: oak_lsp::types::SymbolKind::Class,
+                        range,
+                        selection_range: Range {
+                            start: name_offset,
+                            end: name_end,
+                        },
+                        deprecated: false,
+                        children: vec![],
+                    });
+                }
+            } else if line.starts_with("function ") {
+                let parts: Vec<&str> = line.split_whitespace().collect();
+                if parts.len() >= 2 {
+                    let function_name = parts[1].split('(').next().unwrap_or("").trim();
+                    let name_offset = self.get_offset(&content, line_idx, 9);
+                    let name_end = self.get_offset(&content, line_idx, 9 + function_name.len());
+                    symbols.push(StructureItem {
+                        name: function_name.to_string(),
+                        detail: None,
+                        role: oak_core::language::UniversalElementRole::Definition,
+                        kind: oak_lsp::types::SymbolKind::Function,
+                        range,
+                        selection_range: Range {
+                            start: name_offset,
+                            end: name_end,
+                        },
+                        deprecated: false,
+                        children: vec![],
+                    });
+                }
+            } else if line.starts_with("const ") || line.starts_with("let ") || line.starts_with("var ") {
+                let parts: Vec<&str> = line.split_whitespace().collect();
+                if parts.len() >= 2 {
+                    let variable_name = parts[1]
+                        .split(|c| c == '=' || c == ';' || c == ':')
+                        .next()
+                        .unwrap_or("")
+                        .trim();
+                    let keyword_len = parts[0].len();
+                    let name_offset = self.get_offset(&content, line_idx, keyword_len + 1);
+                    let name_end = self.get_offset(&content, line_idx, keyword_len + 1 + variable_name.len());
+                    symbols.push(StructureItem {
+                        name: variable_name.to_string(),
+                        detail: None,
+                        role: oak_core::language::UniversalElementRole::Binding,
+                        kind: oak_lsp::types::SymbolKind::Variable,
+                        range,
+                        selection_range: Range {
+                            start: name_offset,
+                            end: name_end,
+                        },
+                        deprecated: false,
+                        children: vec![],
+                    });
+                }
+            }
+        }
+
+        symbols
     }
 
-    async fn goto_type_definition(&self, _params: GotoDefinitionParams) -> Result<Option<GotoDefinitionResponse>> {
-        // Simple type definition implementation
-        Ok(None)
+    async fn formatting(&self, uri: &str) -> Vec<TextEdit> {
+        let content = match self.get_document(uri).await.or_else(|| self.get_file_content(uri)) {
+            Some(c) => c,
+            None => return vec![],
+        };
+
+        let options = FormatOptions::default();
+        let formatted_text = format_code_with_options(&content, options);
+
+        if formatted_text != content {
+            let end_offset = content.len();
+            vec![TextEdit {
+                range: Range { start: 0, end: end_offset },
+                new_text: formatted_text,
+            }]
+        } else {
+            vec![]
+        }
     }
 
-    async fn document_highlight(&self, _params: DocumentHighlightParams) -> Result<Option<Vec<DocumentHighlight>>> {
-        // Simple document highlight implementation
-        Ok(None)
+    async fn range_formatting(&self, uri: &str, range: Range<usize>) -> Vec<TextEdit> {
+        let content = match self.get_document(uri).await.or_else(|| self.get_file_content(uri)) {
+            Some(c) => c,
+            None => return vec![],
+        };
+
+        let options = FormatOptions::default();
+        let formatted_text = format_code_range(&content, range.start, range.end, options);
+
+        if formatted_text != &content[range.start..range.end] {
+            vec![TextEdit {
+                range,
+                new_text: formatted_text[range.start..range.end].to_string(),
+            }]
+        } else {
+            vec![]
+        }
     }
 
-    async fn folding_range(&self, _params: FoldingRangeParams) -> Result<Option<Vec<FoldingRange>>> {
-        // Simple folding range implementation
-        Ok(None)
+    async fn initialize(&self, _params: InitializeParams) {}
+
+    async fn initialized(&self) {}
+
+    async fn shutdown(&self) {}
+
+    async fn did_open(&self, uri: &str, content: String) {
+        self.set_document(uri.to_string(), content).await;
     }
 
-    async fn semantic_tokens_full(&self, _params: SemanticTokensParams) -> Result<Option<SemanticTokensResult>> {
-        // Simple semantic tokens implementation
-        Ok(None)
+    async fn did_change(&self, uri: &str, content: String) {
+        self.set_document(uri.to_string(), content).await;
     }
 
-    async fn inlay_hint(&self, _params: InlayHintParams) -> Result<Option<Vec<InlayHint>>> {
-        // Simple inlay hint implementation
-        Ok(None)
+    async fn did_close(&self, uri: &str) {
+        let mut documents = self.documents.lock().unwrap();
+        documents.remove(uri);
+    }
+
+    async fn code_action(&self, _uri: &str, _range: Range<usize>) -> Vec<CodeAction> {
+        vec![]
+    }
+
+    async fn document_highlight(&self, _uri: &str, _range: Range<usize>) -> Vec<DocumentHighlight> {
+        vec![]
+    }
+
+    async fn folding_ranges(&self, _uri: &str) -> Vec<FoldingRange> {
+        vec![]
+    }
+
+    async fn semantic_tokens(&self, _uri: &str) -> Option<SemanticTokens> {
+        None
+    }
+
+    async fn inlay_hint(&self, _uri: &str, _range: Range<usize>) -> Vec<InlayHint> {
+        vec![]
+    }
+
+    async fn signature_help(&self, _uri: &str, _range: Range<usize>) -> Option<SignatureHelp> {
+        None
+    }
+
+    async fn rename(&self, _uri: &str, _range: Range<usize>, _new_name: String) -> Option<WorkspaceEdit> {
+        None
+    }
+
+    async fn type_definition(&self, _uri: &str, _range: Range<usize>) -> Vec<LocationRange> {
+        vec![]
+    }
+
+    async fn implementation(&self, _uri: &str, _range: Range<usize>) -> Vec<LocationRange> {
+        vec![]
+    }
+
+    async fn workspace_symbols(&self, query: String) -> Vec<WorkspaceSymbol> {
+        self.workspace
+            .symbols
+            .query(&query)
+            .into_iter()
+            .map(|s| WorkspaceSymbol::from(s))
+            .collect()
+    }
+
+    async fn diagnostics(&self, _uri: &str) -> Vec<Diagnostic> {
+        vec![]
     }
 }
 
 /// Start the LSP server
 pub async fn start_server() {
-    let (stdin, stdout) = (tokio::io::stdin(), tokio::io::stdout());
-    let (service, socket) = LspService::new(|client| TypeScriptLanguageService::new(client.into()));
-    Server::new(stdin, stdout, socket).serve(service).await;
+    let service = Arc::new(TypeScriptLanguageService::new());
+    let server = oak_lsp::LspServer::new(service);
+    let stdin = tokio::io::stdin();
+    let stdout = tokio::io::stdout();
+    if let Err(e) = server.run(stdin, stdout).await {
+        log::error!("LSP server error: {}", e);
+    }
 }
+
+use std::sync::Arc;

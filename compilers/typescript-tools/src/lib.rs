@@ -1,5 +1,11 @@
 #![warn(missing_docs)]
 
+use tracing::debug;
+use tracing_subscriber::filter::EnvFilter;
+use tracing_subscriber::fmt::format::FmtSpan;
+use tracing_subscriber::fmt::Layer;
+use tracing_subscriber::prelude::*;
+
 pub mod compiler;
 /// Rusty TypeScript CLI 工具集
 ///
@@ -22,8 +28,13 @@ pub const DESCRIPTION: &str = env!("CARGO_PKG_DESCRIPTION");
 
 /// 初始化工具集
 pub fn init() {
-    env_logger::init();
-    log::debug!("Initializing {}-{}", NAME, VERSION);
+    let env_filter = EnvFilter::try_from_default_env().unwrap_or(EnvFilter::new("info"));
+    let fmt_layer = Layer::new().with_span_events(FmtSpan::NONE);
+    tracing_subscriber::registry()
+        .with(env_filter)
+        .with(fmt_layer)
+        .init();
+    debug!("Initializing {}-{}", NAME, VERSION);
 }
 
 /// 执行 TypeScript 脚本
