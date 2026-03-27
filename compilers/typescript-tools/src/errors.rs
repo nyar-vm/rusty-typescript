@@ -1,6 +1,7 @@
 /// 错误定义模块
 ///
 /// 定义工具链中使用的错误类型
+use serde_json;
 use std::error::Error;
 use std::{fmt, io};
 use toml::de;
@@ -10,8 +11,16 @@ use toml::de;
 pub enum ConfigError {
     /// IO 错误
     Io(io::Error),
-    /// 解析错误
-    Parse(de::Error),
+    /// TOML 解析错误
+    TomlParse(de::Error),
+    /// JSON 解析错误
+    JsonParse(serde_json::Error),
+    /// 配置继承循环检测
+    CircularExtends(String),
+    /// 未找到基础配置文件
+    BaseConfigNotFound(String),
+    /// 文件模式匹配错误
+    PatternMatchError(String),
 }
 
 impl fmt::Display for ConfigError {

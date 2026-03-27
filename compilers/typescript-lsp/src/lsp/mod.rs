@@ -1,20 +1,19 @@
 #![doc = include_str!("readme.md")]
 
 use core::range::Range;
-use oak_core::language::Language;
+use oak_core::Arc;
 use oak_lsp::{
     LanguageService, WorkspaceManager,
     types::{
-        CodeAction, CompletionItem, Diagnostic, DocumentHighlight, FoldingRange, Hover,
-        InitializeParams, InlayHint, LocationRange, SemanticTokens, SignatureHelp,
-        StructureItem, TextEdit, WorkspaceEdit, WorkspaceSymbol,
+        CodeAction, CompletionItem, Diagnostic, DocumentHighlight, FoldingRange, Hover, InitializeParams, InlayHint,
+        LocationRange, SemanticTokens, SignatureHelp, StructureItem, TextEdit, WorkspaceEdit, WorkspaceSymbol,
     },
 };
-use oak_vfs::{MemoryVfs, Vfs, WritableVfs};
-use std::{collections::HashMap, sync::Arc};
-use typescript::TypeScriptLanguage;
+use oak_vfs::{MemoryVfs, Vfs};
+use std::{collections::HashMap, sync::Mutex};
 
 pub mod formatter;
+pub mod highlighter;
 
 use formatter::{FormatOptions, format_code_with_options, format_range as format_code_range};
 
@@ -22,40 +21,36 @@ use formatter::{FormatOptions, format_code_with_options, format_range as format_
 pub struct TypeScriptLanguageService {
     vfs: MemoryVfs,
     workspace: WorkspaceManager,
-    documents: Arc<std::sync::Mutex<HashMap<String, String>>>,
+    documents: Mutex<HashMap<String, String>>,
 }
 
 impl TypeScriptLanguageService {
     /// Creates a new `TypeScriptLanguageService`.
     pub fn new() -> Self {
-        Self {
-            vfs: MemoryVfs::new(),
-            workspace: WorkspaceManager::new(),
-            documents: Arc::new(std::sync::Mutex::new(HashMap::new())),
-        }
+        Self { vfs: MemoryVfs::new(), workspace: WorkspaceManager::new(), documents: Mutex::new(HashMap::new()) }
     }
 
     /// Get document content by URI
-    async fn get_document(&self, uri: &str) -> Option<String> {
+    fn get_document(&self, uri: &str) -> Option<String> {
         let documents = self.documents.lock().unwrap();
         documents.get(uri).cloned()
     }
 
     /// Set document content by URI
-    async fn set_document(&self, uri: String, content: String) {
+    fn set_document(&self, uri: String, content: String) {
         let mut documents = self.documents.lock().unwrap();
         documents.insert(uri.clone(), content.clone());
         // Also update VFS
-        self.vfs.write_file(&uri, content.into_bytes());
+        self.vfs.write_file(&uri, content);
     }
 
-    /// Get file content from disk if not in memory
+    /// Get file content from VFS
     fn get_file_content(&self, uri: &str) -> Option<String> {
-        self.vfs.read_file_to_string(uri)
+        self.vfs.get_source(uri).map(|source| source.text().to_string())
     }
 
     /// Extract symbol at position
-    fn extract_symbol_at_position(&self, text: &str, offset: usize) -> Option<String> {
+    pub fn extract_symbol_at_position(&self, text: &str, offset: usize) -> Option<String> {
         let mut symbol = String::new();
         let mut current_pos = offset;
 
@@ -65,7 +60,8 @@ impl TypeScriptLanguageService {
             if ch.is_alphanumeric() || ch == '_' || ch == '$' {
                 symbol.insert(0, ch);
                 current_pos -= 1;
-            } else {
+            }
+            else {
                 break;
             }
         }
@@ -77,20 +73,17 @@ impl TypeScriptLanguageService {
             if ch.is_alphanumeric() || ch == '_' || ch == '$' {
                 symbol.push(ch);
                 current_pos += 1;
-            } else {
+            }
+            else {
                 break;
             }
         }
 
-        if symbol.is_empty() {
-            None
-        } else {
-            Some(symbol)
-        }
+        if symbol.is_empty() { None } else { Some(symbol) }
     }
 
     /// Get offset from line and column
-    fn get_offset(&self, text: &str, line: usize, column: usize) -> usize {
+    pub fn get_offset(&self, text: &str, line: usize, column: usize) -> usize {
         let mut offset = 0;
         let mut current_line = 0;
 
@@ -102,7 +95,8 @@ impl TypeScriptLanguageService {
             if c == '\n' {
                 current_line += 1;
                 offset = 0;
-            } else {
+            }
+            else {
                 offset += 1;
             }
         }
@@ -111,7 +105,7 @@ impl TypeScriptLanguageService {
     }
 
     /// Get line and column from offset
-    fn get_line_and_column(&self, text: &str, offset: usize) -> (usize, usize) {
+    pub fn get_line_and_column(&self, text: &str, offset: usize) -> (usize, usize) {
         let mut line = 0;
         let mut col = 0;
 
@@ -122,7 +116,8 @@ impl TypeScriptLanguageService {
             if c == '\n' {
                 line += 1;
                 col = 0;
-            } else {
+            }
+            else {
                 col += 1;
             }
         }
@@ -131,7 +126,7 @@ impl TypeScriptLanguageService {
     }
 
     /// Check if it's a complete symbol
-    fn is_complete_symbol(&self, line: &str, start: usize, end: usize) -> bool {
+    pub fn is_complete_symbol(&self, line: &str, start: usize, end: usize) -> bool {
         // Check previous character
         if start > 0 {
             let prev_char = line.chars().nth(start - 1).unwrap_or(' ');
@@ -152,7 +147,7 @@ impl TypeScriptLanguageService {
     }
 
     /// Parse format options
-    fn parse_format_options(&self, tab_size: u32, insert_spaces: bool) -> FormatOptions {
+    pub fn parse_format_options(&self, tab_size: u32, insert_spaces: bool) -> FormatOptions {
         FormatOptions {
             indent_size: tab_size,
             use_tabs: !insert_spaces,
@@ -167,24 +162,31 @@ impl TypeScriptLanguageService {
     }
 
     /// Infer variable type
-    fn infer_variable_type(&self, init_expr: &str) -> String {
+    pub fn infer_variable_type(&self, init_expr: &str) -> String {
         let expr = init_expr.trim();
 
         if expr.starts_with('"') || expr.starts_with('\'') {
             return "string".to_string();
-        } else if expr == "true" || expr == "false" {
+        }
+        else if expr == "true" || expr == "false" {
             return "boolean".to_string();
-        } else if expr.starts_with('{') && expr.ends_with('}') {
+        }
+        else if expr.starts_with('{') && expr.ends_with('}') {
             return "object".to_string();
-        } else if expr.starts_with('[') && expr.ends_with(']') {
+        }
+        else if expr.starts_with('[') && expr.ends_with(']') {
             return "any[]".to_string();
-        } else if expr.parse::<i64>().is_ok() || expr.parse::<f64>().is_ok() {
+        }
+        else if expr.parse::<i64>().is_ok() || expr.parse::<f64>().is_ok() {
             return "number".to_string();
-        } else if expr == "null" {
+        }
+        else if expr == "null" {
             return "null".to_string();
-        } else if expr == "undefined" {
+        }
+        else if expr == "undefined" {
             return "undefined".to_string();
-        } else if expr.starts_with("function") || expr.contains("=>") {
+        }
+        else if expr.starts_with("function") || expr.contains("=>") {
             return "Function".to_string();
         }
 
@@ -192,8 +194,84 @@ impl TypeScriptLanguageService {
     }
 }
 
+impl Default for TypeScriptLanguageService {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Placeholder language type for TypeScript
+pub struct TypeScriptLang;
+
+/// Placeholder token type
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct TypeScriptTokenType;
+
+impl oak_core::language::TokenType for TypeScriptTokenType {
+    type Role = TypeScriptTokenRole;
+
+    const END_OF_STREAM: Self = TypeScriptTokenType;
+
+    fn role(&self) -> Self::Role {
+        TypeScriptTokenRole
+    }
+}
+
+/// Placeholder token role
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct TypeScriptTokenRole;
+
+impl oak_core::language::TokenRole for TypeScriptTokenRole {
+    fn universal(&self) -> oak_core::language::UniversalTokenRole {
+        oak_core::language::UniversalTokenRole::Name
+    }
+
+    fn name(&self) -> &str {
+        "name"
+    }
+}
+
+/// Placeholder element type
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct TypeScriptElementType;
+
+impl oak_core::language::ElementType for TypeScriptElementType {
+    type Role = TypeScriptElementRole;
+
+    fn role(&self) -> Self::Role {
+        TypeScriptElementRole
+    }
+}
+
+/// Placeholder element role
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct TypeScriptElementRole;
+
+impl oak_core::language::ElementRole for TypeScriptElementRole {
+    fn universal(&self) -> oak_core::language::UniversalElementRole {
+        oak_core::language::UniversalElementRole::Expression
+    }
+
+    fn name(&self) -> &str {
+        "expression"
+    }
+}
+
+/// Placeholder typed root
+#[derive(Debug)]
+pub struct TypeScriptRoot;
+
+impl oak_core::language::Language for TypeScriptLang {
+    const NAME: &'static str = "typescript";
+    const CATEGORY: oak_core::language::LanguageCategory = oak_core::language::LanguageCategory::Programming;
+
+    type TokenType = TypeScriptTokenType;
+    type ElementType = TypeScriptElementType;
+    type TypedRoot = TypeScriptRoot;
+}
+
 impl LanguageService for TypeScriptLanguageService {
-    type Lang = TypeScriptLanguage;
+    type Lang = TypeScriptLang;
     type Vfs = MemoryVfs;
 
     fn vfs(&self) -> &Self::Vfs {
@@ -204,331 +282,398 @@ impl LanguageService for TypeScriptLanguageService {
         &self.workspace
     }
 
-    async fn hover(&self, uri: &str, range: Range<usize>) -> Option<Hover> {
-        let content = self.get_document(uri).await.or_else(|| self.get_file_content(uri))?;
+    fn hover(&self, uri: &str, range: Range<usize>) -> impl std::future::Future<Output = Option<Hover>> + Send + '_ {
+        let uri = uri.to_string();
+        async move {
+            let content = self.get_document(&uri).or_else(|| self.get_file_content(&uri))?;
 
-        if let Some(symbol_name) = self.extract_symbol_at_position(&content, range.start) {
-            Some(Hover {
-                contents: format!("**{}**\n\nType: any", symbol_name),
-                range: Some(range),
-            })
-        } else {
-            None
-        }
-    }
-
-    async fn completion(&self, uri: &str, offset: usize) -> Vec<CompletionItem> {
-        let content = match self.get_document(uri).await.or_else(|| self.get_file_content(uri)) {
-            Some(c) => c,
-            None => return vec![],
-        };
-
-        let _ = offset;
-        let mut completions = Vec::new();
-
-        // Add keywords
-        let keywords = vec![
-            "abstract", "any", "as", "async", "await", "boolean", "break", "case", "catch",
-            "class", "const", "continue", "debugger", "default", "delete", "do", "else", "enum",
-            "export", "extends", "false", "finally", "for", "function", "if", "implements",
-            "import", "in", "infer", "interface", "let", "module", "namespace", "never", "new",
-            "null", "number", "object", "package", "private", "protected", "public", "readonly",
-            "require", "return", "static", "string", "super", "switch", "this", "throw", "true",
-            "try", "type", "typeof", "var", "void", "while", "with", "yield",
-        ];
-
-        for keyword in keywords {
-            completions.push(CompletionItem {
-                label: keyword.to_string(),
-                kind: Some(oak_lsp::types::CompletionItemKind::Keyword),
-                detail: Some("Keyword".to_string()),
-                documentation: None,
-                insert_text: Some(keyword.to_string()),
-            });
-        }
-
-        completions
-    }
-
-    async fn definition(&self, uri: &str, range: Range<usize>) -> Vec<LocationRange> {
-        let content = match self.get_document(uri).await.or_else(|| self.get_file_content(uri)) {
-            Some(c) => c,
-            None => return vec![],
-        };
-
-        let symbol_name = match self.extract_symbol_at_position(&content, range.start) {
-            Some(s) => s,
-            None => return vec![],
-        };
-
-        let mut locations = Vec::new();
-        let lines: Vec<&str> = content.lines().collect();
-
-        for (line_idx, line) in lines.iter().enumerate() {
-            if line.contains(&format!(" {} ", symbol_name))
-                || line.starts_with(&format!("{} ", symbol_name))
-                || line.ends_with(&format!(" {}", symbol_name))
-            {
-                let line_offset = self.get_offset(&content, line_idx, 0);
-                let line_end = self.get_offset(&content, line_idx, line.len());
-                locations.push(LocationRange {
-                    uri: Arc::from(uri),
-                    range: Range {
-                        start: line_offset,
-                        end: line_end,
-                    },
-                });
-                break; // Return first definition
+            if let Some(symbol_name) = self.extract_symbol_at_position(&content, range.start) {
+                Some(Hover { contents: format!("**{}**\n\nType: any", symbol_name), range: Some(range) })
+            }
+            else {
+                None
             }
         }
-
-        locations
     }
 
-    async fn references(&self, uri: &str, range: Range<usize>) -> Vec<LocationRange> {
-        let content = match self.get_document(uri).await.or_else(|| self.get_file_content(uri)) {
-            Some(c) => c,
-            None => return vec![],
-        };
-
-        let symbol_name = match self.extract_symbol_at_position(&content, range.start) {
-            Some(s) => s,
-            None => return vec![],
-        };
-
-        let mut references = Vec::new();
-        let lines: Vec<&str> = content.lines().collect();
-
-        for (line_idx, line) in lines.iter().enumerate() {
-            let mut current_pos = 0;
-            while let Some(start) = line[current_pos..].find(&symbol_name) {
-                let actual_start = current_pos + start;
-                let end = actual_start + symbol_name.len();
-
-                if self.is_complete_symbol(line, actual_start, end) {
-                    let start_offset = self.get_offset(&content, line_idx, actual_start);
-                    let end_offset = self.get_offset(&content, line_idx, end);
-                    references.push(LocationRange {
-                        uri: Arc::from(uri),
-                        range: Range {
-                            start: start_offset,
-                            end: end_offset,
-                        },
-                    });
-                }
-
-                current_pos = end;
-            }
-        }
-
-        references
-    }
-
-    async fn document_symbols(&self, uri: &str) -> Vec<StructureItem> {
-        let content = match self.get_document(uri).await.or_else(|| self.get_file_content(uri)) {
-            Some(c) => c,
-            None => return vec![],
-        };
-
-        let mut symbols = Vec::new();
-        let lines: Vec<&str> = content.lines().collect();
-
-        for (line_idx, line) in lines.iter().enumerate() {
-            let line_offset = self.get_offset(&content, line_idx, 0);
-            let line_end = self.get_offset(&content, line_idx, line.len());
-            let range = Range {
-                start: line_offset,
-                end: line_end,
+    fn completion<'a>(
+        &'a self,
+        uri: &'a str,
+        _offset: usize,
+    ) -> impl std::future::Future<Output = Vec<CompletionItem>> + Send + 'a {
+        async move {
+            let _content = match self.get_document(uri).or_else(|| self.get_file_content(uri)) {
+                Some(c) => c,
+                None => return vec![],
             };
 
-            if line.starts_with("class ") {
-                let parts: Vec<&str> = line.split_whitespace().collect();
-                if parts.len() >= 2 {
-                    let class_name = parts[1].trim();
-                    let name_offset = self.get_offset(&content, line_idx, 6);
-                    let name_end = self.get_offset(&content, line_idx, 6 + class_name.len());
-                    symbols.push(StructureItem {
-                        name: class_name.to_string(),
-                        detail: None,
-                        role: oak_core::language::UniversalElementRole::Typing,
-                        kind: oak_lsp::types::SymbolKind::Class,
-                        range,
-                        selection_range: Range {
-                            start: name_offset,
-                            end: name_end,
-                        },
-                        deprecated: false,
-                        children: vec![],
-                    });
-                }
-            } else if line.starts_with("function ") {
-                let parts: Vec<&str> = line.split_whitespace().collect();
-                if parts.len() >= 2 {
-                    let function_name = parts[1].split('(').next().unwrap_or("").trim();
-                    let name_offset = self.get_offset(&content, line_idx, 9);
-                    let name_end = self.get_offset(&content, line_idx, 9 + function_name.len());
-                    symbols.push(StructureItem {
-                        name: function_name.to_string(),
-                        detail: None,
-                        role: oak_core::language::UniversalElementRole::Definition,
-                        kind: oak_lsp::types::SymbolKind::Function,
-                        range,
-                        selection_range: Range {
-                            start: name_offset,
-                            end: name_end,
-                        },
-                        deprecated: false,
-                        children: vec![],
-                    });
-                }
-            } else if line.starts_with("const ") || line.starts_with("let ") || line.starts_with("var ") {
-                let parts: Vec<&str> = line.split_whitespace().collect();
-                if parts.len() >= 2 {
-                    let variable_name = parts[1]
-                        .split(|c| c == '=' || c == ';' || c == ':')
-                        .next()
-                        .unwrap_or("")
-                        .trim();
-                    let keyword_len = parts[0].len();
-                    let name_offset = self.get_offset(&content, line_idx, keyword_len + 1);
-                    let name_end = self.get_offset(&content, line_idx, keyword_len + 1 + variable_name.len());
-                    symbols.push(StructureItem {
-                        name: variable_name.to_string(),
-                        detail: None,
-                        role: oak_core::language::UniversalElementRole::Binding,
-                        kind: oak_lsp::types::SymbolKind::Variable,
-                        range,
-                        selection_range: Range {
-                            start: name_offset,
-                            end: name_end,
-                        },
-                        deprecated: false,
-                        children: vec![],
-                    });
+            let mut completions = Vec::new();
+
+            // Add keywords
+            let keywords = vec![
+                "abstract",
+                "any",
+                "as",
+                "async",
+                "await",
+                "boolean",
+                "break",
+                "case",
+                "catch",
+                "class",
+                "const",
+                "continue",
+                "debugger",
+                "default",
+                "delete",
+                "do",
+                "else",
+                "enum",
+                "export",
+                "extends",
+                "false",
+                "finally",
+                "for",
+                "function",
+                "if",
+                "implements",
+                "import",
+                "in",
+                "infer",
+                "interface",
+                "let",
+                "module",
+                "namespace",
+                "never",
+                "new",
+                "null",
+                "number",
+                "object",
+                "package",
+                "private",
+                "protected",
+                "public",
+                "readonly",
+                "require",
+                "return",
+                "static",
+                "string",
+                "super",
+                "switch",
+                "this",
+                "throw",
+                "true",
+                "try",
+                "type",
+                "typeof",
+                "var",
+                "void",
+                "while",
+                "with",
+                "yield",
+            ];
+
+            for keyword in keywords {
+                completions.push(CompletionItem {
+                    label: keyword.to_string(),
+                    kind: Some(oak_lsp::types::CompletionItemKind::Keyword),
+                    detail: Some("Keyword".to_string()),
+                    documentation: None,
+                    insert_text: Some(keyword.to_string()),
+                });
+            }
+
+            completions
+        }
+    }
+
+    fn definition<'a>(
+        &'a self,
+        uri: &'a str,
+        range: Range<usize>,
+    ) -> impl std::future::Future<Output = Vec<LocationRange>> + Send + 'a {
+        async move {
+            let content = match self.get_document(uri).or_else(|| self.get_file_content(uri)) {
+                Some(c) => c,
+                None => return vec![],
+            };
+
+            let symbol_name = match self.extract_symbol_at_position(&content, range.start) {
+                Some(s) => s,
+                None => return vec![],
+            };
+
+            let mut locations = Vec::new();
+            let lines: Vec<&str> = content.lines().collect();
+
+            for (line_idx, line) in lines.iter().enumerate() {
+                if line.contains(&format!(" {} ", symbol_name))
+                    || line.starts_with(&format!("{} ", symbol_name))
+                    || line.ends_with(&format!(" {}", symbol_name))
+                {
+                    let line_offset = self.get_offset(&content, line_idx, 0);
+                    let line_end = self.get_offset(&content, line_idx, line.len());
+                    locations.push(LocationRange { uri: Arc::from(uri), range: Range { start: line_offset, end: line_end } });
+                    break; // Return first definition
                 }
             }
-        }
 
-        symbols
-    }
-
-    async fn formatting(&self, uri: &str) -> Vec<TextEdit> {
-        let content = match self.get_document(uri).await.or_else(|| self.get_file_content(uri)) {
-            Some(c) => c,
-            None => return vec![],
-        };
-
-        let options = FormatOptions::default();
-        let formatted_text = format_code_with_options(&content, options);
-
-        if formatted_text != content {
-            let end_offset = content.len();
-            vec![TextEdit {
-                range: Range { start: 0, end: end_offset },
-                new_text: formatted_text,
-            }]
-        } else {
-            vec![]
+            locations
         }
     }
 
-    async fn range_formatting(&self, uri: &str, range: Range<usize>) -> Vec<TextEdit> {
-        let content = match self.get_document(uri).await.or_else(|| self.get_file_content(uri)) {
-            Some(c) => c,
-            None => return vec![],
-        };
+    fn references<'a>(
+        &'a self,
+        uri: &'a str,
+        range: Range<usize>,
+    ) -> impl std::future::Future<Output = Vec<LocationRange>> + Send + 'a {
+        async move {
+            let content = match self.get_document(uri).or_else(|| self.get_file_content(uri)) {
+                Some(c) => c,
+                None => return vec![],
+            };
 
-        let options = FormatOptions::default();
-        let formatted_text = format_code_range(&content, range.start, range.end, options);
+            let symbol_name = match self.extract_symbol_at_position(&content, range.start) {
+                Some(s) => s,
+                None => return vec![],
+            };
 
-        if formatted_text != &content[range.start..range.end] {
-            vec![TextEdit {
-                range,
-                new_text: formatted_text[range.start..range.end].to_string(),
-            }]
-        } else {
-            vec![]
+            let mut references = Vec::new();
+            let lines: Vec<&str> = content.lines().collect();
+
+            for (line_idx, line) in lines.iter().enumerate() {
+                let mut current_pos = 0;
+                while let Some(start) = line[current_pos..].find(&symbol_name) {
+                    let actual_start = current_pos + start;
+                    let end = actual_start + symbol_name.len();
+
+                    if self.is_complete_symbol(line, actual_start, end) {
+                        let start_offset = self.get_offset(&content, line_idx, actual_start);
+                        let end_offset = self.get_offset(&content, line_idx, end);
+                        references
+                            .push(LocationRange { uri: Arc::from(uri), range: Range { start: start_offset, end: end_offset } });
+                    }
+
+                    current_pos = end;
+                }
+            }
+
+            references
         }
     }
 
-    async fn initialize(&self, _params: InitializeParams) {}
+    fn document_symbols<'a>(&'a self, uri: &'a str) -> impl std::future::Future<Output = Vec<StructureItem>> + Send + 'a {
+        async move {
+            let content = match self.get_document(uri).or_else(|| self.get_file_content(uri)) {
+                Some(c) => c,
+                None => return vec![],
+            };
 
-    async fn initialized(&self) {}
+            let mut symbols = Vec::new();
+            let lines: Vec<&str> = content.lines().collect();
 
-    async fn shutdown(&self) {}
+            for (line_idx, line) in lines.iter().enumerate() {
+                let line_offset = self.get_offset(&content, line_idx, 0);
+                let line_end = self.get_offset(&content, line_idx, line.len());
+                let range = Range { start: line_offset, end: line_end };
 
-    async fn did_open(&self, uri: &str, content: String) {
-        self.set_document(uri.to_string(), content).await;
+                if line.starts_with("class ") {
+                    let parts: Vec<&str> = line.split_whitespace().collect();
+                    if parts.len() >= 2 {
+                        let class_name = parts[1].trim();
+                        let name_offset = self.get_offset(&content, line_idx, 6);
+                        let name_end = self.get_offset(&content, line_idx, 6 + class_name.len());
+                        symbols.push(StructureItem {
+                            name: class_name.to_string(),
+                            detail: None,
+                            role: oak_core::language::UniversalElementRole::Typing,
+                            kind: oak_lsp::types::SymbolKind::Class,
+                            range,
+                            selection_range: Range { start: name_offset, end: name_end },
+                            deprecated: false,
+                            children: vec![],
+                        });
+                    }
+                }
+                else if line.starts_with("function ") {
+                    let parts: Vec<&str> = line.split_whitespace().collect();
+                    if parts.len() >= 2 {
+                        let function_name = parts[1].split('(').next().unwrap_or("").trim();
+                        let name_offset = self.get_offset(&content, line_idx, 9);
+                        let name_end = self.get_offset(&content, line_idx, 9 + function_name.len());
+                        symbols.push(StructureItem {
+                            name: function_name.to_string(),
+                            detail: None,
+                            role: oak_core::language::UniversalElementRole::Definition,
+                            kind: oak_lsp::types::SymbolKind::Function,
+                            range,
+                            selection_range: Range { start: name_offset, end: name_end },
+                            deprecated: false,
+                            children: vec![],
+                        });
+                    }
+                }
+                else if line.starts_with("const ") || line.starts_with("let ") || line.starts_with("var ") {
+                    let parts: Vec<&str> = line.split_whitespace().collect();
+                    if parts.len() >= 2 {
+                        let variable_name = parts[1].split(|c| c == '=' || c == ';' || c == ':').next().unwrap_or("").trim();
+                        let keyword_len = parts[0].len();
+                        let name_offset = self.get_offset(&content, line_idx, keyword_len + 1);
+                        let name_end = self.get_offset(&content, line_idx, keyword_len + 1 + variable_name.len());
+                        symbols.push(StructureItem {
+                            name: variable_name.to_string(),
+                            detail: None,
+                            role: oak_core::language::UniversalElementRole::Binding,
+                            kind: oak_lsp::types::SymbolKind::Variable,
+                            range,
+                            selection_range: Range { start: name_offset, end: name_end },
+                            deprecated: false,
+                            children: vec![],
+                        });
+                    }
+                }
+            }
+
+            symbols
+        }
     }
 
-    async fn did_change(&self, uri: &str, content: String) {
-        self.set_document(uri.to_string(), content).await;
+    fn formatting<'a>(&'a self, uri: &'a str) -> impl std::future::Future<Output = Vec<TextEdit>> + Send + 'a {
+        async move {
+            let content = match self.get_document(uri).or_else(|| self.get_file_content(uri)) {
+                Some(c) => c,
+                None => return vec![],
+            };
+
+            let options = FormatOptions::default();
+            let formatted_text = format_code_with_options(&content, options);
+
+            if formatted_text != content {
+                let end_offset = content.len();
+                vec![TextEdit { range: Range { start: 0, end: end_offset }, new_text: formatted_text }]
+            }
+            else {
+                vec![]
+            }
+        }
     }
 
-    async fn did_close(&self, uri: &str) {
-        let mut documents = self.documents.lock().unwrap();
-        documents.remove(uri);
+    fn range_formatting<'a>(
+        &'a self,
+        uri: &'a str,
+        range: Range<usize>,
+    ) -> impl std::future::Future<Output = Vec<TextEdit>> + Send + 'a {
+        async move {
+            let content = match self.get_document(uri).or_else(|| self.get_file_content(uri)) {
+                Some(c) => c,
+                None => return vec![],
+            };
+
+            let options = FormatOptions::default();
+            let formatted_text = format_code_range(&content, range.start, range.end, options);
+
+            if formatted_text != &content[range.start..range.end] {
+                vec![TextEdit { range, new_text: formatted_text[range.start..range.end].to_string() }]
+            }
+            else {
+                vec![]
+            }
+        }
     }
 
-    async fn code_action(&self, _uri: &str, _range: Range<usize>) -> Vec<CodeAction> {
-        vec![]
+    fn initialize<'a>(&'a self, _params: InitializeParams) -> impl std::future::Future<Output = ()> + Send + 'a {
+        async move {}
     }
 
-    async fn document_highlight(&self, _uri: &str, _range: Range<usize>) -> Vec<DocumentHighlight> {
-        vec![]
+    fn initialized<'a>(&'a self) -> impl std::future::Future<Output = ()> + Send + 'a {
+        async move {}
     }
 
-    async fn folding_ranges(&self, _uri: &str) -> Vec<FoldingRange> {
-        vec![]
+    fn shutdown<'a>(&'a self) -> impl std::future::Future<Output = ()> + Send + 'a {
+        async move {}
     }
 
-    async fn semantic_tokens(&self, _uri: &str) -> Option<SemanticTokens> {
-        None
+    fn code_action<'a>(
+        &'a self,
+        _uri: &'a str,
+        _range: Range<usize>,
+    ) -> impl std::future::Future<Output = Vec<CodeAction>> + Send + 'a {
+        async move { vec![] }
     }
 
-    async fn inlay_hint(&self, _uri: &str, _range: Range<usize>) -> Vec<InlayHint> {
-        vec![]
+    fn document_highlight<'a>(
+        &'a self,
+        _uri: &'a str,
+        _range: Range<usize>,
+    ) -> impl std::future::Future<Output = Vec<DocumentHighlight>> + Send + 'a {
+        async move { vec![] }
     }
 
-    async fn signature_help(&self, _uri: &str, _range: Range<usize>) -> Option<SignatureHelp> {
-        None
+    fn folding_ranges(&self, _uri: &str) -> impl std::future::Future<Output = Vec<FoldingRange>> + Send + '_ {
+        async move { vec![] }
     }
 
-    async fn rename(&self, _uri: &str, _range: Range<usize>, _new_name: String) -> Option<WorkspaceEdit> {
-        None
+    fn semantic_tokens<'a>(&'a self, _uri: &'a str) -> impl std::future::Future<Output = Option<SemanticTokens>> + Send + 'a {
+        async move { None }
     }
 
-    async fn type_definition(&self, _uri: &str, _range: Range<usize>) -> Vec<LocationRange> {
-        vec![]
+    fn inlay_hint<'a>(
+        &'a self,
+        _uri: &'a str,
+        _range: Range<usize>,
+    ) -> impl std::future::Future<Output = Vec<InlayHint>> + Send + 'a {
+        async move { vec![] }
     }
 
-    async fn implementation(&self, _uri: &str, _range: Range<usize>) -> Vec<LocationRange> {
-        vec![]
+    fn signature_help<'a>(
+        &'a self,
+        _uri: &'a str,
+        _range: Range<usize>,
+    ) -> impl std::future::Future<Output = Option<SignatureHelp>> + Send + 'a {
+        async move { None }
     }
 
-    async fn workspace_symbols(&self, query: String) -> Vec<WorkspaceSymbol> {
-        self.workspace
-            .symbols
-            .query(&query)
-            .into_iter()
-            .map(|s| WorkspaceSymbol::from(s))
-            .collect()
+    fn rename<'a>(
+        &'a self,
+        _uri: &'a str,
+        _range: Range<usize>,
+        _new_name: String,
+    ) -> impl std::future::Future<Output = Option<WorkspaceEdit>> + Send + 'a {
+        async move { None }
     }
 
-    async fn diagnostics(&self, _uri: &str) -> Vec<Diagnostic> {
-        vec![]
+    fn type_definition<'a>(
+        &'a self,
+        _uri: &'a str,
+        _range: Range<usize>,
+    ) -> impl std::future::Future<Output = Vec<LocationRange>> + Send + 'a {
+        async move { vec![] }
+    }
+
+    fn implementation<'a>(
+        &'a self,
+        _uri: &'a str,
+        _range: Range<usize>,
+    ) -> impl std::future::Future<Output = Vec<LocationRange>> + Send + 'a {
+        async move { vec![] }
+    }
+
+    fn workspace_symbols<'a>(&'a self, query: String) -> impl std::future::Future<Output = Vec<WorkspaceSymbol>> + Send + 'a {
+        async move { self.workspace.symbols.query(&query).into_iter().map(|s| WorkspaceSymbol::from(s)).collect() }
+    }
+
+    fn diagnostics<'a>(&'a self, _uri: &'a str) -> impl std::future::Future<Output = Vec<Diagnostic>> + Send + 'a {
+        async move { vec![] }
     }
 }
 
 /// Start the LSP server
 pub async fn start_server() {
-    let service = Arc::new(TypeScriptLanguageService::new());
+    let service = std::sync::Arc::new(TypeScriptLanguageService::new());
     let server = oak_lsp::LspServer::new(service);
     let stdin = tokio::io::stdin();
     let stdout = tokio::io::stdout();
-    if let Err(e) = server.run(stdin, stdout).await {
-        log::error!("LSP server error: {}", e);
+    if let Err(_e) = server.run(stdin, stdout).await {
+        // Server error handling
     }
 }
-
-use std::sync::Arc;

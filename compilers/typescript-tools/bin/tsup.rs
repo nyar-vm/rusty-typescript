@@ -1,5 +1,6 @@
 use clap::Parser;
 use std::{fs::File, io::Write, path::PathBuf};
+use tracing::debug;
 use typescript_tools::{
     init,
     utils::{ensure_dir, normalize_path_separators},
@@ -59,7 +60,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
 
     // 打印命令行参数，用于调试
-    log::debug!("CLI arguments: {:?}", cli);
+    debug!("CLI arguments: {:?}", cli);
 
     // 检查是否提供了输入文件
     if cli.files.is_empty() {

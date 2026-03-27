@@ -1,3 +1,4 @@
+use oak_core::Range;
 use oak_lsp::types::TextEdit;
 
 /// Format options for code formatting.
@@ -141,9 +142,7 @@ impl Formatter {
                 }
 
                 // Operator handling
-                '+' | '-' | '*' | '/' | '%' | '=' | '>' | '<'
-                    if !in_string && !in_comment && !in_multiline_comment =>
-                {
+                '+' | '-' | '*' | '/' | '%' | '=' | '>' | '<' if !in_string && !in_comment && !in_multiline_comment => {
                     if self.options.spaces_around_operators && !line_start {
                         formatted.push(' ');
                     }
@@ -233,52 +232,12 @@ impl Formatter {
         formatted.push(c);
     }
 
-    /// Appends indentation based on the current indent level.
-    fn append_indent(&self, formatted: &mut String, indent_level: u32) {
-        if self.options.use_tabs {
-            formatted.push_str(&"\t".repeat(indent_level as usize));
-        } else {
-            formatted.push_str(&" ".repeat((indent_level * self.options.indent_size) as usize));
-        }
-    }
-}
-
-/// Formats TypeScript code with default options.
-pub fn format_code(text: &str) -> String {
-    let options = FormatOptions::default();
-    let formatter = Formatter::new(options);
-    formatter.format_document(text)
-}
-
-/// Formats TypeScript code with custom options.
-pub fn format_code_with_options(text: &str, options: FormatOptions) -> String {
-    let formatter = Formatter::new(options);
-    formatter.format_document(text)
-}
-
-/// Formats a specific range of TypeScript code with custom options.
-pub fn format_range(text: &str, start: usize, end: usize, options: FormatOptions) -> String {
-    let formatter = Formatter::new(options);
-    formatter.format_range(text, start, end)
-
-        }
-
-        formatted
-    }
-
-    /// Appends a character with proper indentation.
-    fn append_char(&self, formatted: &mut String, c: char, indent_level: u32, line_start: bool) {
-        if line_start {
-            self.append_indent(formatted, indent_level);
-        }
-        formatted.push(c);
-    }
-
     /// Appends indentation based on current level.
     fn append_indent(&self, formatted: &mut String, indent_level: u32) {
         if self.options.use_tabs {
             formatted.push_str(&"\t".repeat(indent_level as usize));
-        } else {
+        }
+        else {
             formatted.push_str(&" ".repeat((indent_level * self.options.indent_size) as usize));
         }
     }
@@ -306,8 +265,5 @@ pub fn format_range(text: &str, start: usize, end: usize, options: FormatOptions
 /// Creates a TextEdit for formatting the entire document.
 pub fn create_formatting_edit(text: &str, options: FormatOptions) -> TextEdit {
     let formatted = format_code_with_options(text, options);
-    TextEdit {
-        range: core::range::Range { start: 0, end: text.len() },
-        new_text: formatted,
-    }
+    TextEdit { range: Range { start: 0, end: text.len() }, new_text: formatted }
 }
