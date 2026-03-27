@@ -9,7 +9,7 @@ default-members = [
 ]
 
 [workspace.package]
-version = "0.0.1"
+version = "0.0.2"
 edition = "2024"
 authors = ["Rusty TypeScript Team"]
 description = "Rusty TypeScript - A high-performance TypeScript compiler written in Rust"
@@ -42,10 +42,10 @@ once_cell = "1.18.0"
 lsp-types = "0.94.0"
 regex = "1.10.3"
 
-typescript = { path = "compilers/typescript" }
-typescript-types = { path = "compilers/typescript-types" }
-typescript-ir = { path = "compilers/typescript-ir" }
-typescript-webidl = { path = "compilers/typescript-webidl" }
+typescript = { path = "compilers/typescript", version = "0.0.2" }
+typescript-types = { path = "compilers/typescript-types", version = "0.0.2" }
+typescript-ir = { path = "compilers/typescript-ir", version = "0.0.2" }
+typescript-webidl = { path = "compilers/typescript-webidl", version = "0.0.2" }
 
 oak-typescript = { git = "https://github.com/ygg-lang/oaks.git", version = "0.0.3" }
 oak-core = { git = "https://github.com/ygg-lang/oaks.git", version = "0.0.3" }
