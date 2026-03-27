@@ -145,7 +145,7 @@ cargo test --package typescript-lsp --test integration
 - **typescript** - Core compiler
 - **typescript-types** - Type system
 - **typescript-ir** - Intermediate representation
-- **tower-lsp** - LSP framework
+- **oak-lsp** - LSP framework
 - **tokio** - Async runtime
 - **serde_json** - JSON processing
 

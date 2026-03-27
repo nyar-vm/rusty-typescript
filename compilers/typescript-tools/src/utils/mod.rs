@@ -74,6 +74,14 @@ pub fn get_temp_dir() -> PathBuf {
     std::env::temp_dir()
 }
 
+/// 获取平台特定的换行符
+pub fn get_platform_newline() -> &'static str {
+    #[cfg(windows)]
+    return "\r\n";
+    #[cfg(not(windows))]
+    return "\n";
+}
+
 /// 检查文件是否为 TypeScript 文件
 pub fn is_typescript_file(path: &PathBuf) -> bool {
     matches!(path.extension().and_then(|ext| ext.to_str()), Some("ts") | Some("tsx"))
@@ -82,4 +90,23 @@ pub fn is_typescript_file(path: &PathBuf) -> bool {
 /// 检查文件是否为 JavaScript 文件
 pub fn is_javascript_file(path: &PathBuf) -> bool {
     matches!(path.extension().and_then(|ext| ext.to_str()), Some("js") | Some("jsx"))
+}
+
+/// 平台特定的路径处理
+pub fn platform_path(path: &str) -> PathBuf {
+    let mut result = PathBuf::new();
+    for component in path.split(['/', '\\']) {
+        if !component.is_empty() {
+            result.push(component);
+        }
+    }
+    result
+}
+
+/// 获取平台特定的环境变量分隔符
+pub fn get_env_separator() -> char {
+    #[cfg(windows)]
+    return ';';
+    #[cfg(not(windows))]
+    return ':';
 }

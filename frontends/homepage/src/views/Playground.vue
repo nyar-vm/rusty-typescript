@@ -1,164 +1,94 @@
 <template>
   <div class="min-h-screen bg-gradient-to-b from-blue-50 to-white">
 
-    <!-- 主要内容 -->
-    <div class="pt-40 pb-32">
+    <div class="pt-20 pb-16">
       <div class="max-w-7xl mx-auto px-6 lg:px-8">
-        <div class="text-center max-w-4xl mx-auto mb-16">
+        <div class="text-center max-w-4xl mx-auto mb-12">
           <div class="inline-block px-4 py-2 bg-blue-100 text-blue-800 rounded-full text-sm font-semibold mb-6">
             在线编辑器
           </div>
           <h1 class="text-4xl md:text-5xl font-bold mb-6 text-blue-800">
             Rusty TypeScript Playground
           </h1>
-          <p class="text-xl text-slate-700 mb-12">
+          <p class="text-xl text-slate-700 mb-8">
             在线尝试 Rusty TypeScript，体验高性能 TypeScript 编译和运行
           </p>
         </div>
 
-        <div class="bg-white rounded-3xl border border-blue-200 shadow-lg p-6 md:p-8">
-          <div class="flex justify-between items-center mb-6">
-            <h3 class="font-semibold text-blue-800 text-lg">TypeScript 代码编辑器</h3>
-            <div class="flex items-center gap-4">
-              <button 
-                @click="runCode"
-                class="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm"
-              >
-                运行
-              </button>
-              <button 
-                @click="clearOutput"
-                class="px-5 py-2 bg-white text-blue-800 border border-blue-200 rounded-lg text-sm font-medium hover:bg-blue-50 transition-colors"
-              >
-                清除输出
-              </button>
+        <div class="flex flex-col lg:flex-row gap-6">
+          <div class="lg:w-1/4 order-2 lg:order-1">
+            <div class="bg-white rounded-2xl border border-blue-200 shadow-lg overflow-hidden sticky top-6">
+              <div class="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4">
+                <h3 class="font-semibold text-white text-lg flex items-center gap-2">
+                  <span class="text-xl">📚</span>
+                  示例代码库
+                </h3>
+              </div>
+              <div class="p-4 max-h-[calc(100vh-200px)] overflow-y-auto">
+                <TypeScriptExamples @import="handleImportExample" />
+              </div>
             </div>
           </div>
-          
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <!-- 编辑器 -->
-            <div class="h-[600px] rounded-2xl overflow-hidden border border-blue-200">
-              <div ref="editorContainer" style="width: 100%; height: 100%"></div>
-            </div>
-            
-            <!-- 输出结果 -->
-            <div class="h-[600px] rounded-2xl overflow-hidden border border-blue-200 bg-slate-900">
-              <div class="bg-slate-800 px-4 py-3 border-b border-slate-700">
-                <h4 class="text-slate-300 font-medium">输出结果</h4>
-              </div>
-              <div class="p-4 h-[calc(100%-52px)] overflow-auto">
-                <pre class="text-slate-300 font-mono text-sm whitespace-pre-wrap">{{ output }}</pre>
-              </div>
-            </div>
+
+          <div class="lg:w-3/4 order-1 lg:order-2">
+            <TypeScriptPlayground ref="playgroundRef" />
           </div>
         </div>
 
         <div class="mt-16 max-w-3xl mx-auto">
           <div class="bg-blue-50 rounded-2xl p-6 border border-blue-100">
-            <h3 class="font-semibold text-blue-800 mb-4">关于 Playground</h3>
-            <p class="text-slate-700 mb-4">
-              Rusty TypeScript Playground 允许您在线编写、编译和运行 TypeScript 代码，体验 Rusty TypeScript 的高性能特性。
-            </p>
+            <h3 class="font-semibold text-blue-800 mb-4 flex items-center gap-2">
+              <span class="text-xl">💡</span>
+              使用提示
+            </h3>
+            <ul class="text-slate-700 space-y-2">
+              <li class="flex items-start gap-2">
+                <span class="text-blue-600 mt-1">•</span>
+                <span>点击左侧示例卡片中的"导入到 Playground"按钮可快速加载示例代码</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-blue-600 mt-1">•</span>
+                <span>使用 <kbd class="px-2 py-1 bg-white rounded border border-blue-200 text-sm">Ctrl+Enter</kbd> 快捷键运行代码</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-blue-600 mt-1">•</span>
+                <span>编辑器支持实时代码检查和语法高亮</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-blue-600 mt-1">•</span>
+                <span>当 WASM 模块不可用时，系统会自动切换到模拟执行模式</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="mt-8 max-w-3xl mx-auto">
+          <div class="bg-amber-50 rounded-2xl p-6 border border-amber-200">
+            <h3 class="font-semibold text-amber-800 mb-4 flex items-center gap-2">
+              <span class="text-xl">⚠️</span>
+              注意事项
+            </h3>
             <p class="text-slate-700">
-              请注意，此 Playground 仅用于演示目的，可能会有一些功能限制。
+              此 Playground 仅用于演示目的，可能会有一些功能限制。在生产环境中使用时，请确保已正确配置 WASM 模块。
             </p>
           </div>
         </div>
       </div>
     </div>
 
-
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from "vue";
-import * as monaco from "monaco-editor";
+import { ref } from "vue";
+import TypeScriptPlayground from "../components/TypeScriptPlayground.vue";
+import TypeScriptExamples from "../components/TypeScriptExamples.vue";
 
-const code = ref(`// 在这里编写 TypeScript 代码
-function fibonacci(n: number): number {
-  if (n <= 1) return n;
-  return fibonacci(n - 1) + fibonacci(n - 2);
-}
+const playgroundRef = ref<InstanceType<typeof TypeScriptPlayground> | null>(null);
 
-console.log(fibonacci(10));
-
-interface Person {
-  name: string;
-  age: number;
-}
-
-const person: Person = {
-  name: "Rusty TypeScript",
-  age: 1
+const handleImportExample = (code: string) => {
+    if (playgroundRef.value) {
+        playgroundRef.value.importCode(code);
+    }
 };
-
-console.log(person);`);
-
-const output = ref(`55
-{ name: "Rusty TypeScript", age: 1 }`);
-
-const editorContainer = ref<HTMLElement | null>(null);
-let editor: monaco.editor.IStandaloneCodeEditor | null = null;
-
-const editorOptions = {
-    minimap: { enabled: true },
-    scrollBeyondLastLine: false,
-    automaticLayout: true,
-    tabSize: 2,
-    fontFamily: '"Fira Code", Consolas, "Courier New", monospace',
-    fontSize: 14,
-    lineNumbers: "on" as any,
-    wordWrap: "on" as const,
-    scrollbar: {
-        vertical: "auto" as const,
-        horizontal: "auto" as const,
-    },
-};
-
-onMounted(() => {
-    if (editorContainer.value) {
-        editor = monaco.editor.create(editorContainer.value, {
-            value: code.value,
-            language: "typescript",
-            theme: "vs-dark",
-            ...editorOptions,
-        });
-
-        // 监听编辑器内容变化
-        editor.onDidChangeModelContent(() => {
-            if (editor) {
-                code.value = editor.getValue();
-            }
-        });
-    }
-});
-
-onUnmounted(() => {
-    if (editor) {
-        editor.dispose();
-        editor = null;
-    }
-});
-
-function runCode() {
-    // 模拟运行代码
-    try {
-        // 这里应该是调用 Rusty TypeScript 编译器和运行时
-        // 现在只是模拟输出
-        output.value = `运行结果：
-55
-{ name: "Rusty TypeScript", age: 1 }
-
-编译时间：0.12s
-运行时间：0.05s`;
-    } catch (error) {
-        output.value = `错误：
-${error instanceof Error ? error.message : "未知错误"}`;
-    }
-}
-
-function clearOutput() {
-    output.value = "";
-}
 </script>

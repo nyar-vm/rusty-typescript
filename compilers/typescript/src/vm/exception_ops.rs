@@ -25,8 +25,6 @@ impl ExceptionOperations {
             exception_var,
             has_finally: finally_ip.is_some(),
             finally_ip,
-            handler_address: handler_ip,
-            stack_depth: 0,
         };
         exception_handlers.push(handler);
         Ok(())
@@ -67,7 +65,7 @@ impl ExceptionOperations {
         if let Some(var_name) = &handler.exception_var {
             let error_value = TsValue::Error(format!("{}", exception));
             if let Some(frame) = call_stack.last_mut() {
-                frame.set_local(var_name.clone(), error_value);
+                frame.set_local(var_name.as_str(), error_value);
             }
         }
 

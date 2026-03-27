@@ -17,6 +17,87 @@ impl TypeScriptLanguage {
         Self::default()
     }
 
+    /// 创建标准的 TypeScript 语言配置，支持所有常见的 TypeScript 特性
+    pub fn standard() -> Self {
+        let mut language = Self::new();
+
+        // 基本类型系统特性
+        language.add_feature(TypeScriptFeature::TypeAnnotations);
+        language.add_feature(TypeScriptFeature::Interfaces);
+        language.add_feature(TypeScriptFeature::Generics);
+        language.add_feature(TypeScriptFeature::Enums);
+        language.add_feature(TypeScriptFeature::TypeAliases);
+        language.add_feature(TypeScriptFeature::UnionTypes);
+        language.add_feature(TypeScriptFeature::IntersectionTypes);
+        language.add_feature(TypeScriptFeature::LiteralTypes);
+        language.add_feature(TypeScriptFeature::TupleTypes);
+        language.add_feature(TypeScriptFeature::FunctionTypes);
+        language.add_feature(TypeScriptFeature::ObjectTypes);
+        language.add_feature(TypeScriptFeature::ArrayTypes);
+        language.add_feature(TypeScriptFeature::IndexedAccessTypes);
+        language.add_feature(TypeScriptFeature::KeyofTypes);
+        language.add_feature(TypeScriptFeature::TypeofTypes);
+        language.add_feature(TypeScriptFeature::InferredTypes);
+        language.add_feature(TypeScriptFeature::RecursiveTypes);
+        language.add_feature(TypeScriptFeature::GenericConstraints);
+        language.add_feature(TypeScriptFeature::TypeParameterDefaults);
+        language.add_feature(TypeScriptFeature::RestTypeParameters);
+        language.add_feature(TypeScriptFeature::OptionalTypeParameters);
+        language.add_feature(TypeScriptFeature::OverloadedFunctionTypes);
+        language.add_feature(TypeScriptFeature::ConstructorTypes);
+
+        // 类相关特性
+        language.add_feature(TypeScriptFeature::AccessModifiers);
+        language.add_feature(TypeScriptFeature::StaticMembers);
+        language.add_feature(TypeScriptFeature::AbstractClasses);
+        language.add_feature(TypeScriptFeature::Inheritance);
+        language.add_feature(TypeScriptFeature::InterfaceImplementation);
+
+        // 模块系统
+        language.add_feature(TypeScriptFeature::ModuleSystem);
+        language.add_feature(TypeScriptFeature::EsModules);
+        language.add_feature(TypeScriptFeature::CommonJsModules);
+        language.add_feature(TypeScriptFeature::ExternalModuleDeclarations);
+
+        // 语法特性
+        language.add_feature(TypeScriptFeature::AsyncAwait);
+        language.add_feature(TypeScriptFeature::OptionalChaining);
+        language.add_feature(TypeScriptFeature::NullishCoalescing);
+        language.add_feature(TypeScriptFeature::TemplateLiteralTypes);
+        language.add_feature(TypeScriptFeature::MappedTypes);
+        language.add_feature(TypeScriptFeature::ConditionalTypes);
+        language.add_feature(TypeScriptFeature::Namespaces);
+        language.add_feature(TypeScriptFeature::Decorators);
+
+        // 严格模式选项
+        language.add_feature(TypeScriptFeature::StrictMode);
+        language.add_feature(TypeScriptFeature::StrictNullChecks);
+        language.add_feature(TypeScriptFeature::StrictFunctionTypes);
+        language.add_feature(TypeScriptFeature::StrictBindCallApply);
+        language.add_feature(TypeScriptFeature::StrictPropertyInitialization);
+        language.add_feature(TypeScriptFeature::NoImplicitAny);
+        language.add_feature(TypeScriptFeature::NoImplicitThis);
+        language.add_feature(TypeScriptFeature::AlwaysStrict);
+
+        // 代码质量选项
+        language.add_feature(TypeScriptFeature::NoUnusedVariables);
+        language.add_feature(TypeScriptFeature::NoUnusedParameters);
+        language.add_feature(TypeScriptFeature::NoEmptyFunctions);
+        language.add_feature(TypeScriptFeature::NoEmptyInterfaces);
+        language.add_feature(TypeScriptFeature::NoDuplicateImports);
+        language.add_feature(TypeScriptFeature::NoDuplicateClassMembers);
+        language.add_feature(TypeScriptFeature::NoDuplicateParameters);
+        language.add_feature(TypeScriptFeature::NoDuplicateCaseLabels);
+        language.add_feature(TypeScriptFeature::NoUnreachableCode);
+        language.add_feature(TypeScriptFeature::NoImplicitReturns);
+
+        // 其他特性
+        language.add_feature(TypeScriptFeature::TripleSlashDirectives);
+        language.add_feature(TypeScriptFeature::JsDocComments);
+
+        language
+    }
+
     /// 添加一个 TypeScript 特性
     pub fn add_feature(&mut self, feature: TypeScriptFeature) {
         self.features.insert(feature);

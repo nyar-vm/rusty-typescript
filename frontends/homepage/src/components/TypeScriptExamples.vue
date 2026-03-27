@@ -1,15 +1,10 @@
 <template>
   <div class="typescript-examples">
-    <div class="examples-header">
-      <h2>TypeScript 示例库</h2>
-      <p>浏览和使用 TypeScript 代码示例</p>
-    </div>
-
     <div class="examples-controls">
       <div class="search-box">
-        <input 
-          v-model="searchQuery" 
-          type="text" 
+        <input
+          v-model="searchQuery"
+          type="text"
           placeholder="搜索示例..."
           class="search-input"
         />
@@ -17,24 +12,19 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
         </svg>
       </div>
-      <div class="sort-controls">
-        <select v-model="sortBy" class="sort-select">
-          <option value="title">按标题排序</option>
-          <option value="category">按分类排序</option>
-        </select>
-      </div>
     </div>
 
     <div class="examples-filters">
-      <button 
-        v-for="category in categories" 
+      <button
+        v-for="category in categories"
         :key="category.id"
         :class="['category-btn', { active: selectedCategory === category.id }]"
         @click="selectedCategory = category.id"
+        :title="category.description"
       >
         {{ category.name }}
       </button>
-      <button 
+      <button
         :class="['category-btn', { active: selectedCategory === 'all' }]"
         @click="selectedCategory = 'all'"
       >
@@ -42,17 +32,17 @@
       </button>
     </div>
 
-    <div class="examples-grid">
-      <div 
-        v-for="example in sortedAndFilteredExamples" 
+    <div class="examples-list">
+      <div
+        v-for="example in sortedAndFilteredExamples"
         :key="example.id"
         class="example-card"
       >
         <div class="example-header">
-          <h3>{{ example.title }}</h3>
+          <h4 class="example-title">{{ example.title }}</h4>
           <div class="example-tags">
-            <span 
-              v-for="tag in example.tags" 
+            <span
+              v-for="tag in example.tags.slice(0, 2)"
               :key="tag"
               class="tag"
             >
@@ -61,14 +51,12 @@
           </div>
         </div>
         <p class="example-description">{{ example.description }}</p>
-        <div class="example-actions">
-          <button 
-            class="import-btn"
-            @click="importExample(example)"
-          >
-            导入到 Playground
-          </button>
-        </div>
+        <button
+          class="import-btn"
+          @click="importExample(example)"
+        >
+          导入到 Playground
+        </button>
       </div>
     </div>
 
@@ -88,7 +76,6 @@ const emit = defineEmits<{
 
 const searchQuery = ref("");
 const selectedCategory = ref("all");
-const sortBy = ref("title");
 const categories = examplesData.categories;
 const examples = examplesData.examples;
 
@@ -110,16 +97,11 @@ const sortedAndFilteredExamples = computed(() => {
     const filtered = filteredExamples.value;
 
     return [...filtered].sort((a, b) => {
-        if (sortBy.value === "title") {
-            return a.title.localeCompare(b.title);
-        } else if (sortBy.value === "category") {
-            return a.category.localeCompare(b.category);
-        }
-        return 0;
+        return a.title.localeCompare(b.title);
     });
 });
 
-const importExample = (example: any) => {
+const importExample = (example: { code: string }) => {
     emit("import", example.code);
 };
 </script>
@@ -127,107 +109,60 @@ const importExample = (example: any) => {
 <style scoped>
 .typescript-examples {
   width: 100%;
-  max-width: 1000px;
-  margin: 0 auto;
-  padding: 20px;
-  background-color: #f5f5f5;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.examples-header {
-  text-align: center;
-  margin-bottom: 30px;
-}
-
-.examples-header h2 {
-  color: #333;
-  font-size: 28px;
-  margin-bottom: 10px;
-}
-
-.examples-header p {
-  color: #666;
-  font-size: 16px;
 }
 
 .examples-controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 15px;
-  justify-content: center;
-  align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 12px;
 }
 
 .search-box {
   position: relative;
-  max-width: 400px;
-}
-
-.sort-controls {
-  display: flex;
-  align-items: center;
-}
-
-.sort-select {
-  padding: 8px 12px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 14px;
-  outline: none;
-  background-color: white;
-  cursor: pointer;
-  transition: border-color 0.3s ease;
-}
-
-.sort-select:focus {
-  border-color: #2196F3;
-  box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
+  width: 100%;
 }
 
 .search-input {
   width: 100%;
-  padding: 12px 16px 12px 40px;
-  border: 1px solid #ddd;
-  border-radius: 24px;
-  font-size: 14px;
+  padding: 10px 12px 10px 36px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 13px;
   outline: none;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
+  background: #fafafa;
 }
 
 .search-input:focus {
   border-color: #2196F3;
-  box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
+  box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.1);
+  background: white;
 }
 
 .search-icon {
   position: absolute;
-  left: 14px;
+  left: 12px;
   top: 50%;
   transform: translateY(-50%);
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   color: #999;
 }
 
 .examples-filters {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  justify-content: center;
-  margin-bottom: 30px;
+  gap: 6px;
+  margin-bottom: 12px;
 }
 
 .category-btn {
-  padding: 8px 16px;
-  border: 1px solid #ddd;
-  border-radius: 20px;
+  padding: 6px 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 16px;
   background-color: white;
-  color: #333;
-  font-size: 14px;
+  color: #666;
+  font-size: 12px;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
 }
 
 .category-btn:hover {
@@ -241,70 +176,78 @@ const importExample = (example: any) => {
   color: white;
 }
 
-.examples-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 20px;
+.examples-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .example-card {
   background-color: white;
-  border: 1px solid #ddd;
+  border: 1px solid #e8e8e8;
   border-radius: 8px;
-  padding: 20px;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  padding: 12px;
+  transition: all 0.2s ease;
 }
 
 .example-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  border-color: #2196F3;
+  box-shadow: 0 2px 8px rgba(33, 150, 243, 0.1);
 }
 
 .example-header {
-  margin-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 6px;
+  gap: 8px;
 }
 
-.example-header h3 {
+.example-title {
   color: #333;
-  font-size: 18px;
-  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0;
+  flex: 1;
 }
 
 .example-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 4px;
+  flex-shrink: 0;
 }
 
 .tag {
-  padding: 4px 8px;
-  background-color: #f0f0f0;
-  border-radius: 12px;
-  font-size: 12px;
+  padding: 2px 6px;
+  background-color: #f0f4f8;
+  border-radius: 8px;
+  font-size: 10px;
   color: #666;
 }
 
 .example-description {
   color: #666;
-  font-size: 14px;
+  font-size: 12px;
   line-height: 1.4;
-  margin-bottom: 15px;
-}
-
-.example-actions {
-  text-align: right;
+  margin: 0 0 10px 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .import-btn {
-  padding: 8px 16px;
+  width: 100%;
+  padding: 8px 12px;
   background-color: #4CAF50;
   color: white;
   border: none;
-  border-radius: 4px;
-  font-size: 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
   cursor: pointer;
-  transition: background-color 0.3s ease;
+  transition: background-color 0.2s ease;
 }
 
 .import-btn:hover {
@@ -313,25 +256,8 @@ const importExample = (example: any) => {
 
 .no-examples {
   text-align: center;
-  padding: 40px 0;
-  color: #666;
-  font-size: 16px;
-}
-
-@media (max-width: 768px) {
-  .examples-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .examples-filters {
-    flex-direction: column;
-    align-items: center;
-  }
-  
-  .category-btn {
-    width: 100%;
-    max-width: 200px;
-    text-align: center;
-  }
+  padding: 24px 0;
+  color: #999;
+  font-size: 14px;
 }
 </style>

@@ -40,3 +40,10 @@ fn test_typescript_parser_basic() {
     // 这里我们只是测试 parser 能够创建，实际的解析功能需要更复杂的测试
     assert!(true);
 }
+
+mod test_decorators;
+mod test_jsx;
+mod test_lexer_parser;
+mod test_optimized_parser;
+mod test_syntax;
+mod test_typescript_features;

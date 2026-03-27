@@ -599,6 +599,9 @@ impl JITOptimizer {
                 Instruction::Call(arg_count) => {
                     if self.should_inline_function(instructions, i, *arg_count) {
                         self.inline_function(instructions, i, *arg_count);
+                        // 内联后重新从当前位置开始检查，因为指令长度发生了变化
+                        i = 0;
+                        continue;
                     }
                 }
                 _ => {}
@@ -611,12 +614,20 @@ impl JITOptimizer {
 
     /// 检查是否应该内联函数
     fn should_inline_function(&self, instructions: &[Instruction], call_pos: usize, arg_count: u32) -> bool {
-        if arg_count > 5 {
+        if arg_count > 8 {
             return false;
         }
 
         if let Some((function_body, param_count)) = self.find_function_definition(instructions, call_pos) {
-            if function_body.len() < 100 && param_count == arg_count {
+            // 根据优化级别调整内联阈值
+            let max_body_length = match self.optimization_level {
+                OptimizationLevel::High => 200,
+                OptimizationLevel::Medium => 150,
+                OptimizationLevel::Basic => 100,
+                OptimizationLevel::None => 0,
+            };
+
+            if function_body.len() < max_body_length && param_count == arg_count {
                 return true;
             }
         }
@@ -647,14 +658,35 @@ impl JITOptimizer {
             if param_count == arg_count {
                 let mut inline_instructions = vec![];
 
+                // 保存参数到局部变量
                 for i in 0..arg_count as usize {
                     inline_instructions.push(Instruction::StoreLocal(i));
                 }
 
-                inline_instructions.extend(function_body);
+                // 复制函数体
+                let mut body = function_body.clone();
 
+                // 处理返回值
+                self.process_return_values(&mut body);
+
+                inline_instructions.extend(body);
+
+                // 替换调用指令
                 instructions.splice(call_pos - arg_count as usize..=call_pos, inline_instructions);
             }
+        }
+    }
+
+    /// 处理内联函数中的返回值
+    fn process_return_values(&self, instructions: &mut Vec<Instruction>) {
+        let mut i = 0;
+        while i < instructions.len() {
+            if let Instruction::Return = instructions[i] {
+                // 对于函数内联，我们不需要返回指令，只需要保留栈顶的值
+                instructions.remove(i);
+                continue;
+            }
+            i += 1;
         }
     }
 

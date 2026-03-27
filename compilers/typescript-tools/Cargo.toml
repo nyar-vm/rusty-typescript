@@ -40,9 +40,14 @@ tracing-subscriber = { workspace = true }
 
 [target.'cfg(windows)'.dependencies]
 winapi = { workspace = true }
+ctrlc = "3.5.2"
 
 [target.'cfg(unix)'.dependencies]
 libc = { workspace = true }
+ctrlc = "3.5.2"
+
+[target.'cfg(macos)'.dependencies]
+ctrlc = "3.5.2"
 
 [[bin]]
 name = "tsc"

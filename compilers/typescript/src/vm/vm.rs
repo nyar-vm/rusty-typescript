@@ -163,10 +163,6 @@ impl VM {
                     self.stack.push(TsValue::String(s.clone()));
                     i += 1;
                 }
-                Instruction::Push(value) => {
-                    self.stack.push(value.clone());
-                    i += 1;
-                }
 
                 Instruction::LoadVariable(name) => {
                     self.load_variable(name)?;
@@ -185,17 +181,17 @@ impl VM {
                     i += 1;
                 }
 
-                Instruction::CreateObject | Instruction::CreateObject(_size) => {
+                Instruction::CreateObject => {
                     ObjectOperations::create_object(&mut self.memory, &mut self.stack);
                     i += 1;
                 }
-                Instruction::GetProperty | Instruction::GetMember => {
+                Instruction::GetProperty => {
                     let property = self.stack.pop().ok_or_else(|| TsError::TypeError("Stack underflow".to_string()))?;
                     let object = self.stack.pop().ok_or_else(|| TsError::TypeError("Stack underflow".to_string()))?;
                     ObjectOperations::get_property(object, property, &mut self.stack)?;
                     i += 1;
                 }
-                Instruction::SetProperty | Instruction::SetMember => {
+                Instruction::SetProperty => {
                     let property = self.stack.pop().ok_or_else(|| TsError::TypeError("Stack underflow".to_string()))?;
                     let value = self.stack.pop().ok_or_else(|| TsError::TypeError("Stack underflow".to_string()))?;
                     let object = self.stack.pop().ok_or_else(|| TsError::TypeError("Stack underflow".to_string()))?;
@@ -203,17 +199,17 @@ impl VM {
                     i += 1;
                 }
 
-                Instruction::CreateArray(_size) => {
+                Instruction::CreateArray => {
                     ArrayOperations::create_array(&mut self.memory, &mut self.stack);
                     i += 1;
                 }
-                Instruction::GetIndex => {
+                Instruction::GetElement => {
                     let index = self.stack.pop().ok_or_else(|| TsError::TypeError("Stack underflow".to_string()))?;
                     let array = self.stack.pop().ok_or_else(|| TsError::TypeError("Stack underflow".to_string()))?;
                     ArrayOperations::get_element(array, index, &mut self.stack)?;
                     i += 1;
                 }
-                Instruction::SetIndex => {
+                Instruction::SetElement => {
                     let index = self.stack.pop().ok_or_else(|| TsError::TypeError("Stack underflow".to_string()))?;
                     let value = self.stack.pop().ok_or_else(|| TsError::TypeError("Stack underflow".to_string()))?;
                     let array = self.stack.pop().ok_or_else(|| TsError::TypeError("Stack underflow".to_string()))?;
@@ -264,7 +260,7 @@ impl VM {
                     i += 1;
                 }
 
-                Instruction::TryStart(_handler) => {
+                Instruction::TryStart { handler_ip: _, finally_ip: _, exception_var: _ } => {
                     i += 1;
                 }
                 Instruction::TryEnd => {
@@ -275,15 +271,46 @@ impl VM {
                     ExceptionOperations::throw_exception(&mut self.stack)?;
                     i += 1;
                 }
-                Instruction::Catch(_handler) => {
-                    i += 1;
-                }
-                Instruction::Finally => {
-                    i += 1;
-                }
 
                 Instruction::Pop => {
                     self.stack.pop();
+                    i += 1;
+                }
+                Instruction::Dup => {
+                    if let Some(value) = self.stack.last().cloned() {
+                        self.stack.push(value);
+                    }
+                    i += 1;
+                }
+                Instruction::Swap => {
+                    if self.stack.len() >= 2 {
+                        let len = self.stack.len();
+                        self.stack.swap(len - 1, len - 2);
+                    }
+                    i += 1;
+                }
+                Instruction::SetFunctionBody(_) => {
+                    // 简化实现
+                    i += 1;
+                }
+                Instruction::SetClassBody(_) => {
+                    // 简化实现
+                    i += 1;
+                }
+                Instruction::CreateTypeAlias(_) => {
+                    // 简化实现
+                    i += 1;
+                }
+                Instruction::CreateInterface(_) => {
+                    // 简化实现
+                    i += 1;
+                }
+                Instruction::ImportModule { .. } => {
+                    // 简化实现
+                    i += 1;
+                }
+                Instruction::Export { .. } => {
+                    // 简化实现
                     i += 1;
                 }
             }

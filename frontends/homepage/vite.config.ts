@@ -10,7 +10,7 @@ export default defineConfig({
             registerType: "autoUpdate",
             workbox: {
                 globPatterns: ["**/*.{js,css,html,ico,png,svg}"],
-                maximumFileSizeToCacheInBytes: 10 * 1024 * 1024, // 10 MB
+                maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
                 runtimeCaching: [
                     {
                         urlPattern: /^https:\/\/cdnjs\.cloudflare\.com\//i,
@@ -19,7 +19,7 @@ export default defineConfig({
                             cacheName: "cdn-cache",
                             expiration: {
                                 maxEntries: 50,
-                                maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
+                                maxAgeSeconds: 60 * 60 * 24 * 30,
                             },
                         },
                     },
@@ -55,9 +55,25 @@ export default defineConfig({
         target: "esnext",
         rollupOptions: {
             output: {
-                manualChunks: {
-                    vendor: ["vue"],
-                    element: ["element-plus"],
+                manualChunks: (id) => {
+                    if (id.includes("node_modules")) {
+                        if (id.includes("monaco-editor")) {
+                            return "monaco-editor";
+                        }
+                        if (id.includes("vue") || id.includes("@vue")) {
+                            return "vue-vendor";
+                        }
+                        if (id.includes("element-plus")) {
+                            return "element-plus";
+                        }
+                        if (id.includes("@nyar/typescript")) {
+                            return "nyar-typescript";
+                        }
+                        if (id.includes("@element-plus/icons-vue")) {
+                            return "element-icons";
+                        }
+                        return "vendor";
+                    }
                 },
                 entryFileNames: "assets/[name].[hash].js",
                 chunkFileNames: "assets/[name].[hash].js",
@@ -69,13 +85,38 @@ export default defineConfig({
             compress: {
                 drop_console: true,
                 drop_debugger: true,
+                pure_funcs: ["console.log", "console.info", "console.debug"],
+                passes: 2,
+                ecma: 2020,
+                comparisons: false,
+                inline: 2,
+                collapse_vars: true,
+                reduce_vars: true,
+                booleans: true,
+                loops: true,
+                unused: true,
+                dead_code: true,
+            },
+            format: {
+                comments: false,
+            },
+            mangle: {
+                safari10: true,
+                properties: {
+                    regex: /^_/,
+                },
             },
         },
         cssCodeSplit: true,
         sourcemap: false,
+        chunkSizeWarningLimit: 1000,
+        reportCompressedSize: true,
     },
     optimizeDeps: {
         include: ["vue", "element-plus"],
         exclude: [],
+        esbuildOptions: {
+            target: "esnext",
+        },
     },
 });

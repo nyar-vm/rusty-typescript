@@ -78,28 +78,59 @@ impl MainCompiler {
             }
         }
 
-        // 简化的编译实现，直接返回成功
+        // 执行编译过程
         self.current_stage = CompilationStage::LexicalAnalysis;
 
-        // 模拟编译过程
-        std::thread::sleep(std::time::Duration::from_millis(10));
-
-        // 返回成功结果
-        let result = CompilationResult::Success(TsValue::Null);
-
-        // 存储缓存
-        if self.context.options.incremental {
-            if let CompilationResult::Success(ref result) = result {
-                self.cache.store_cache(
-                    &hash,
-                    crate::compiler::cache::CacheItem::ExecutionResult(Box::new(result.clone())),
-                    unit.dependencies.iter().cloned().collect(),
-                    CompilationStage::Execution,
-                );
-            }
+        // 1. 语义分析
+        self.current_stage = CompilationStage::SemanticAnalysis;
+        match self.semantic_analyzer.analyze(&unit.source_content) {
+            CompilationResult::Success(_) => {}
+            CompilationResult::Error(error) => return CompilationResult::Error(error),
+            _ => return CompilationResult::Error(TsError::Other("Semantic analysis failed".to_string())),
         }
 
-        result
+        // 2. IR 生成
+        self.current_stage = CompilationStage::IRGeneration;
+        let ir = self.ir_generator.generate(&unit.source_content);
+
+        match ir {
+            CompilationResult::Success(program) => {
+                // 3. 优化
+                self.current_stage = CompilationStage::Optimization;
+                let optimized_ir = self.optimizer.optimize(&program);
+
+                match optimized_ir {
+                    CompilationResult::Success(optimized_program) => {
+                        // 4. 代码生成
+                        self.current_stage = CompilationStage::CodeGeneration;
+                        let typed_program = typescript_ir::TypedProgram::from_program(&optimized_program);
+                        let instructions = self.code_generator.generate(&typed_program);
+
+                        // 5. 执行
+                        self.current_stage = CompilationStage::Execution;
+                        let result = self.executor.execute(&optimized_program);
+
+                        // 存储缓存
+                        if self.context.options.incremental {
+                            if let CompilationResult::Success(ref result) = result {
+                                self.cache.store_cache(
+                                    &hash,
+                                    crate::compiler::cache::CacheItem::ExecutionResult(Box::new(result.clone())),
+                                    unit.dependencies.iter().cloned().collect(),
+                                    CompilationStage::Execution,
+                                );
+                            }
+                        }
+
+                        result
+                    }
+                    CompilationResult::Error(error) => CompilationResult::Error(error),
+                    _ => CompilationResult::Error(TsError::Other("Optimization failed".to_string())),
+                }
+            }
+            CompilationResult::Error(error) => CompilationResult::Error(error),
+            _ => CompilationResult::Error(TsError::Other("IR generation failed".to_string())),
+        }
     }
 
     /// 并行编译多个文件

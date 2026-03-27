@@ -2,8 +2,7 @@
 ///
 /// 定义工具链中使用的错误类型
 use serde_json;
-use std::error::Error;
-use std::{fmt, io};
+use std::{error::Error, fmt, io};
 use toml::de;
 
 /// 配置错误
@@ -27,7 +26,11 @@ impl fmt::Display for ConfigError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ConfigError::Io(err) => write!(f, "IO error: {}", err),
-            ConfigError::Parse(err) => write!(f, "Parse error: {}", err),
+            ConfigError::TomlParse(err) => write!(f, "TOML parse error: {}", err),
+            ConfigError::JsonParse(err) => write!(f, "JSON parse error: {}", err),
+            ConfigError::CircularExtends(path) => write!(f, "Circular extends detected: {}", path),
+            ConfigError::BaseConfigNotFound(path) => write!(f, "Base config not found: {}", path),
+            ConfigError::PatternMatchError(msg) => write!(f, "Pattern match error: {}", msg),
         }
     }
 }
@@ -36,7 +39,11 @@ impl Error for ConfigError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             ConfigError::Io(err) => Some(err),
-            ConfigError::Parse(err) => Some(err),
+            ConfigError::TomlParse(err) => Some(err),
+            ConfigError::JsonParse(err) => Some(err),
+            ConfigError::CircularExtends(_) => None,
+            ConfigError::BaseConfigNotFound(_) => None,
+            ConfigError::PatternMatchError(_) => None,
         }
     }
 }
@@ -49,7 +56,13 @@ impl From<io::Error> for ConfigError {
 
 impl From<de::Error> for ConfigError {
     fn from(err: de::Error) -> Self {
-        ConfigError::Parse(err)
+        ConfigError::TomlParse(err)
+    }
+}
+
+impl From<serde_json::Error> for ConfigError {
+    fn from(err: serde_json::Error) -> Self {
+        ConfigError::JsonParse(err)
     }
 }
 

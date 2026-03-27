@@ -19,7 +19,7 @@
         "build": "pnpm -F @vutex/documentation build",
         "preview": "pnpm -F @vutex/documentation preview",
         "build:release": "tsx scripts/build-release.ts",
-        "u": "cargo upgrade --pinned",
+        "u": "cargo upgrade --incompatible",
         "p": "cargo workspace publish --resume --allow-dirty",
         "check:ci": "node scripts/check.mjs",
         "check": "node scripts/check.mjs",

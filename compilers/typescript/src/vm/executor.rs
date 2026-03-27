@@ -148,9 +148,6 @@ impl InstructionExecutor {
             Instruction::PushString(s) => {
                 ctx.stack.push(TsValue::String(s.clone()));
             }
-            Instruction::Push(value) => {
-                ctx.stack.push(value.clone());
-            }
 
             Instruction::LoadVariable(name) => {
                 Self::load_variable(name, ctx.stack, globals, call_stack)?;
@@ -165,30 +162,30 @@ impl InstructionExecutor {
                 Self::store_local(*index, ctx.stack, call_stack)?;
             }
 
-            Instruction::CreateObject | Instruction::CreateObject(_size) => {
+            Instruction::CreateObject => {
                 ObjectOperations::create_object(ctx.memory, ctx.stack);
             }
-            Instruction::GetProperty | Instruction::GetMember => {
+            Instruction::GetProperty => {
                 let property = ctx.stack.pop().ok_or_else(|| TsError::TypeError("Stack underflow".to_string()))?;
                 let object = ctx.stack.pop().ok_or_else(|| TsError::TypeError("Stack underflow".to_string()))?;
                 ObjectOperations::get_property(object, property, ctx.stack)?;
             }
-            Instruction::SetProperty | Instruction::SetMember => {
+            Instruction::SetProperty => {
                 let property = ctx.stack.pop().ok_or_else(|| TsError::TypeError("Stack underflow".to_string()))?;
                 let value = ctx.stack.pop().ok_or_else(|| TsError::TypeError("Stack underflow".to_string()))?;
                 let object = ctx.stack.pop().ok_or_else(|| TsError::TypeError("Stack underflow".to_string()))?;
                 ObjectOperations::set_property(object, property, value, ctx.stack)?;
             }
 
-            Instruction::CreateArray(_size) => {
+            Instruction::CreateArray => {
                 ArrayOperations::create_array(ctx.memory, ctx.stack);
             }
-            Instruction::GetIndex => {
+            Instruction::GetElement => {
                 let index = ctx.stack.pop().ok_or_else(|| TsError::TypeError("Stack underflow".to_string()))?;
                 let array = ctx.stack.pop().ok_or_else(|| TsError::TypeError("Stack underflow".to_string()))?;
                 ArrayOperations::get_element(array, index, ctx.stack)?;
             }
-            Instruction::SetIndex => {
+            Instruction::SetElement => {
                 let index = ctx.stack.pop().ok_or_else(|| TsError::TypeError("Stack underflow".to_string()))?;
                 let value = ctx.stack.pop().ok_or_else(|| TsError::TypeError("Stack underflow".to_string()))?;
                 let array = ctx.stack.pop().ok_or_else(|| TsError::TypeError("Stack underflow".to_string()))?;
@@ -234,15 +231,42 @@ impl InstructionExecutor {
             Instruction::Throw => {
                 return ExceptionOperations::throw_exception(ctx.stack).map(|_| None);
             }
-            Instruction::TryStart(_handler) => {}
+            Instruction::TryStart { handler_ip: _, finally_ip: _, exception_var: _ } => {}
             Instruction::TryEnd => {
                 ExceptionOperations::try_end(exception_handlers)?;
             }
-            Instruction::Catch(_handler) => {}
-            Instruction::Finally => {}
 
             Instruction::Pop => {
                 ctx.stack.pop();
+            }
+            Instruction::Dup => {
+                if let Some(value) = ctx.stack.last().cloned() {
+                    ctx.stack.push(value);
+                }
+            }
+            Instruction::Swap => {
+                if ctx.stack.len() >= 2 {
+                    let len = ctx.stack.len();
+                    ctx.stack.swap(len - 1, len - 2);
+                }
+            }
+            Instruction::SetFunctionBody(_) => {
+                // 简化实现
+            }
+            Instruction::SetClassBody(_) => {
+                // 简化实现
+            }
+            Instruction::CreateTypeAlias(_) => {
+                // 简化实现
+            }
+            Instruction::CreateInterface(_) => {
+                // 简化实现
+            }
+            Instruction::ImportModule { .. } => {
+                // 简化实现
+            }
+            Instruction::Export { .. } => {
+                // 简化实现
             }
         }
 

@@ -348,6 +348,78 @@ pub fn ts_value_to_napi(_env: NapiEnv, value: &TsValue) -> Result<NapiValue, TsE
             // 简化实现
             Ok(NapiValue(std::ptr::null_mut()))
         }
+        TsValue::Conditional(_) => {
+            // 简化实现
+            Ok(NapiValue(std::ptr::null_mut()))
+        }
+        TsValue::Mapped(_) => {
+            // 简化实现
+            Ok(NapiValue(std::ptr::null_mut()))
+        }
+        TsValue::TemplateLiteral(_) => {
+            // 简化实现
+            Ok(NapiValue(std::ptr::null_mut()))
+        }
+        TsValue::KeyOf(_) => {
+            // 简化实现
+            Ok(NapiValue(std::ptr::null_mut()))
+        }
+        TsValue::TypeOf(_) => {
+            // 简化实现
+            Ok(NapiValue(std::ptr::null_mut()))
+        }
+        TsValue::IndexedAccess { .. } => {
+            // 简化实现
+            Ok(NapiValue(std::ptr::null_mut()))
+        }
+        TsValue::Tuple(_) => {
+            // 简化实现
+            Ok(NapiValue(std::ptr::null_mut()))
+        }
+        TsValue::Readonly(_) => {
+            // 简化实现
+            Ok(NapiValue(std::ptr::null_mut()))
+        }
+        TsValue::Nullable(_) => {
+            // 简化实现
+            Ok(NapiValue(std::ptr::null_mut()))
+        }
+        TsValue::NonNullable(_) => {
+            // 简化实现
+            Ok(NapiValue(std::ptr::null_mut()))
+        }
+        TsValue::Infer { .. } => {
+            // 简化实现
+            Ok(NapiValue(std::ptr::null_mut()))
+        }
+        TsValue::FunctionType { .. } => {
+            // 简化实现
+            Ok(NapiValue(std::ptr::null_mut()))
+        }
+        TsValue::ConstructorType { .. } => {
+            // 简化实现
+            Ok(NapiValue(std::ptr::null_mut()))
+        }
+        TsValue::ThisType => {
+            // 简化实现
+            Ok(NapiValue(std::ptr::null_mut()))
+        }
+        TsValue::Never => {
+            // 简化实现
+            Ok(NapiValue(std::ptr::null_mut()))
+        }
+        TsValue::Unknown => {
+            // 简化实现
+            Ok(NapiValue(std::ptr::null_mut()))
+        }
+        TsValue::Any => {
+            // 简化实现
+            Ok(NapiValue(std::ptr::null_mut()))
+        }
+        TsValue::Void => {
+            // 简化实现
+            Ok(NapiValue(std::ptr::null_mut()))
+        }
     }
 }
 

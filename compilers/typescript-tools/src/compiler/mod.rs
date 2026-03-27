@@ -1,10 +1,13 @@
 /// 编译器模块
 ///
 /// 处理 TypeScript 文件的编译和执行
+pub mod incremental;
+
 use std::path::PathBuf;
 use typescript::{create_runtime, run_script};
 
 /// 编译选项
+#[derive(Debug, Clone)]
 pub struct CompileOptions {
     /// 输出目录
     pub out_dir: Option<PathBuf>,
@@ -18,6 +21,10 @@ pub struct CompileOptions {
     pub no_emit: bool,
     /// 生成 source map
     pub source_map: bool,
+    /// 生成声明文件
+    pub declaration: bool,
+    /// 是否压缩
+    pub minify: bool,
 }
 
 /// 编译结果
@@ -51,6 +58,35 @@ pub fn execute_file(file: &PathBuf) -> Result<String, String> {
     execute_script(&content)
 }
 
+/// 执行带参数的 TypeScript 文件
+pub fn execute_file_with_args(file: &PathBuf, args: &[String]) -> Result<String, String> {
+    use std::fs::read_to_string;
+
+    let content = match read_to_string(file) {
+        Ok(content) => content,
+        Err(e) => return Err(format!("无法读取文件: {}", e)),
+    };
+
+    /// 创建运行时并设置命令行参数
+    let mut runtime = create_runtime();
+
+    /// 设置 process.argv
+    use typescript_types::TsValue;
+    let mut argv = Vec::new();
+    argv.push(TsValue::String(file.to_string_lossy().to_string()));
+    for arg in args {
+        argv.push(TsValue::String(arg.clone()));
+    }
+
+    let process_obj = TsValue::Object(std::collections::HashMap::from([("argv".to_string(), TsValue::Array(argv))]));
+    runtime.set_global("process", process_obj);
+
+    match run_script(&mut runtime, &content) {
+        Ok(result) => Ok(result),
+        Err(error) => Err(error.to_string()),
+    }
+}
+
 /// 编译 TypeScript 文件
 pub fn compile_file(file: &PathBuf, _options: &CompileOptions) -> CompileResult {
     use std::fs::read_to_string;
@@ -81,6 +117,16 @@ pub fn compile_file(file: &PathBuf, _options: &CompileOptions) -> CompileResult 
 /// 并行编译多个 TypeScript 文件
 pub fn compile_files(files: &[PathBuf], options: &CompileOptions) -> Vec<CompileResult> {
     use rayon::prelude::*;
+    use std::sync::Arc;
 
-    files.par_iter().map(|file| compile_file(file, options)).collect()
+    // 直接使用 Arc 包装原始选项，避免克隆
+    let options_arc = Arc::new(options);
+
+    files
+        .par_iter()
+        .map(|file| {
+            let options = options_arc.clone();
+            compile_file(file, options.as_ref())
+        })
+        .collect()
 }

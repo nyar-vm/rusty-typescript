@@ -258,8 +258,9 @@ impl ExpressionOptimization {
                         continue;
                     }
 
-                    let optimized_stmt = crate::statement_optimization::optimize_statement(stmt, optimization_level);
-                    if !crate::dead_code_elimination::DeadCodeElimination::is_dead_code(&optimized_stmt) {
+                    let optimized_stmt =
+                        crate::optimization::statement_optimization::optimize_statement(stmt, optimization_level);
+                    if !crate::optimization::dead_code_elimination::DeadCodeElimination::is_dead_code(&optimized_stmt) {
                         optimized_body.push(optimized_stmt.clone());
                         if matches!(optimized_stmt, Statement::Return(_)) {
                             has_return = true;

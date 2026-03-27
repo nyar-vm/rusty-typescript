@@ -82,7 +82,7 @@ impl DynamicLibrary {
 
             let handle = unsafe { LoadLibraryA(c_path.as_ptr() as *const u8) };
 
-            if handle == 0 {
+            if handle.is_null() {
                 let error_code = unsafe { GetLastError() };
                 return Err(DylibError::OpenError(format!("Windows error code: {}", error_code)));
             }

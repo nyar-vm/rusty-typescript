@@ -28,6 +28,12 @@ pub struct MemoryPool {
     total_used: AtomicUsize,
 }
 
+// 实现 Send trait，因为 MemoryPool 可以安全地在线程之间发送
+unsafe impl Send for MemoryPool {}
+
+// 实现 Sync trait，因为 MemoryPool 可以安全地在线程之间共享
+unsafe impl Sync for MemoryPool {}
+
 impl MemoryPool {
     /// 创建一个新的内存池
     pub fn new() -> Self {
@@ -223,13 +229,15 @@ impl MemoryStats {
 /// 内存分配器 trait
 ///
 /// 定义内存分配的基本接口
-pub trait Allocator {
+pub trait Allocator: Send {
     /// 分配指定大小的内存
     fn allocate(&mut self, size: usize) -> Option<NonNull<u8>>;
     /// 释放内存
     fn deallocate(&mut self, ptr: NonNull<u8>, size: usize);
     /// 获取内存使用统计
     fn stats(&self) -> MemoryStats;
+    /// 克隆分配器
+    fn box_clone(&self) -> Box<dyn Allocator>;
 }
 
 /// 伙伴分配器
@@ -247,6 +255,12 @@ pub struct BuddyAllocator {
     /// 最大块大小
     max_block_size: usize,
 }
+
+// 实现 Send trait，因为 BuddyAllocator 可以安全地在线程之间发送
+unsafe impl Send for BuddyAllocator {}
+
+// 实现 Sync trait，因为 BuddyAllocator 可以安全地在线程之间共享
+unsafe impl Sync for BuddyAllocator {}
 
 impl BuddyAllocator {
     /// 创建一个新的伙伴分配器
@@ -392,6 +406,10 @@ impl Allocator for BuddyAllocator {
             free_blocks,
         }
     }
+
+    fn box_clone(&self) -> Box<dyn Allocator> {
+        Box::new(BuddyAllocator::new(self.min_block_size, self.max_block_size))
+    }
 }
 
 impl Drop for BuddyAllocator {
@@ -441,6 +459,10 @@ impl Allocator for DefaultAllocator {
 
     fn stats(&self) -> MemoryStats {
         self.pool.stats()
+    }
+
+    fn box_clone(&self) -> Box<dyn Allocator> {
+        Box::new(DefaultAllocator { pool: MemoryPool::new() })
     }
 }
 

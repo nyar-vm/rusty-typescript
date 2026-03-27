@@ -14,9 +14,11 @@
         "@monaco-editor/react": "^4.7.0",
         "@nyar/typescript": "workspace:*",
         "@types/marked": "^6.0.0",
+        "@types/pako": "^2.0.4",
         "element-plus": "^2.5.0",
         "marked": "^17.0.5",
         "monaco-editor": "^0.55.1",
+        "pako": "^2.1.0",
         "shiki": "^4.0.2",
         "vue": "^3.4.0",
         "vue-router": "^4.6.4"

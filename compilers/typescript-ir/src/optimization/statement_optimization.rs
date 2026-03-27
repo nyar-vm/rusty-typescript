@@ -1,5 +1,7 @@
-use crate::{Expression, Method, OptimizationLevel, Statement};
-use typescript_types::TsValue;
+use crate::{
+    Expression, Method, OptimizationLevel, Statement,
+    optimization::{dead_code_elimination::DeadCodeElimination, expression_optimization::ExpressionOptimization},
+};
 
 /// 语句优化器
 pub struct StatementOptimization;
@@ -8,13 +10,12 @@ pub struct StatementOptimization;
 pub fn optimize_statement(stmt: &Statement, optimization_level: OptimizationLevel) -> Statement {
     match stmt {
         Statement::Expression(expr) => {
-            let optimized_expr = crate::expression_optimization::ExpressionOptimization::optimize(expr, optimization_level);
+            let optimized_expr = ExpressionOptimization::optimize(expr, optimization_level);
             Statement::Expression(Box::new(optimized_expr))
         }
         Statement::VariableDeclaration { name, ty, initializer } => {
-            let optimized_initializer = initializer.as_ref().map(|init| {
-                Box::new(crate::expression_optimization::ExpressionOptimization::optimize(init, optimization_level))
-            });
+            let optimized_initializer =
+                initializer.as_ref().map(|init| Box::new(ExpressionOptimization::optimize(init, optimization_level)));
             let optimized_stmt =
                 Statement::VariableDeclaration { name: name.clone(), ty: ty.clone(), initializer: optimized_initializer };
 
@@ -35,7 +36,7 @@ pub fn optimize_statement(stmt: &Statement, optimization_level: OptimizationLeve
                 }
 
                 let optimized_stmt = optimize_statement(stmt, optimization_level);
-                if !crate::dead_code_elimination::DeadCodeElimination::is_dead_code(&optimized_stmt) {
+                if !DeadCodeElimination::is_dead_code(&optimized_stmt) {
                     optimized_statements.push(optimized_stmt.clone());
                     if matches!(optimized_stmt, Statement::Return(_)) {
                         has_return = true;
@@ -46,7 +47,7 @@ pub fn optimize_statement(stmt: &Statement, optimization_level: OptimizationLeve
             Statement::Block(optimized_statements)
         }
         Statement::If { test, consequent, alternate } => {
-            let optimized_test = crate::expression_optimization::ExpressionOptimization::optimize(test, optimization_level);
+            let optimized_test = ExpressionOptimization::optimize(test, optimization_level);
 
             if let Some(test_value) = optimized_test.eval() {
                 let condition = test_value.to_boolean();
@@ -71,7 +72,7 @@ pub fn optimize_statement(stmt: &Statement, optimization_level: OptimizationLeve
             }
         }
         Statement::While { test, body } => {
-            let optimized_test = crate::expression_optimization::ExpressionOptimization::optimize(test, optimization_level);
+            let optimized_test = ExpressionOptimization::optimize(test, optimization_level);
 
             if let Some(test_value) = optimized_test.eval() {
                 let condition = test_value.to_boolean();
@@ -86,12 +87,10 @@ pub fn optimize_statement(stmt: &Statement, optimization_level: OptimizationLeve
         }
         Statement::For { init, test, update, body } => {
             let optimized_init = init.as_ref().map(|init_stmt| Box::new(optimize_statement(init_stmt, optimization_level)));
-            let optimized_test = test.as_ref().map(|test_expr| {
-                Box::new(crate::expression_optimization::ExpressionOptimization::optimize(test_expr, optimization_level))
-            });
-            let optimized_update = update.as_ref().map(|update_expr| {
-                Box::new(crate::expression_optimization::ExpressionOptimization::optimize(update_expr, optimization_level))
-            });
+            let optimized_test =
+                test.as_ref().map(|test_expr| Box::new(ExpressionOptimization::optimize(test_expr, optimization_level)));
+            let optimized_update =
+                update.as_ref().map(|update_expr| Box::new(ExpressionOptimization::optimize(update_expr, optimization_level)));
             let optimized_body = optimize_statement(body, optimization_level);
 
             Statement::For {
@@ -102,9 +101,7 @@ pub fn optimize_statement(stmt: &Statement, optimization_level: OptimizationLeve
             }
         }
         Statement::Return(expr) => {
-            let optimized_expr = expr
-                .as_ref()
-                .map(|e| Box::new(crate::expression_optimization::ExpressionOptimization::optimize(e, optimization_level)));
+            let optimized_expr = expr.as_ref().map(|e| Box::new(ExpressionOptimization::optimize(e, optimization_level)));
             Statement::Return(optimized_expr)
         }
         Statement::FunctionDeclaration { name, params, return_type, body, type_params, decorators } => {
@@ -117,7 +114,7 @@ pub fn optimize_statement(stmt: &Statement, optimization_level: OptimizationLeve
                 }
 
                 let optimized_stmt = optimize_statement(stmt, optimization_level);
-                if !crate::dead_code_elimination::DeadCodeElimination::is_dead_code(&optimized_stmt) {
+                if !DeadCodeElimination::is_dead_code(&optimized_stmt) {
                     optimized_body.push(optimized_stmt.clone());
                     if matches!(optimized_stmt, Statement::Return(_)) {
                         has_return = true;
@@ -148,7 +145,7 @@ pub fn optimize_statement(stmt: &Statement, optimization_level: OptimizationLeve
                     }
 
                     let optimized_stmt = optimize_statement(stmt, optimization_level);
-                    if !crate::dead_code_elimination::DeadCodeElimination::is_dead_code(&optimized_stmt) {
+                    if !DeadCodeElimination::is_dead_code(&optimized_stmt) {
                         optimized_body.push(optimized_stmt.clone());
                         if matches!(optimized_stmt, Statement::Return(_)) {
                             has_return = true;
