@@ -344,4 +344,4 @@ impl InlayHintProvider {
     }
 }
 
-use crate::lsp::symbols::SymbolTable;
+

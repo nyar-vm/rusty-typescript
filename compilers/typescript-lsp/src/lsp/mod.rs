@@ -1,7 +1,6 @@
 #![doc = include_str!("readme.md")]
 
 use core::range::Range;
-use oak_core::Arc;
 use oak_lsp::{
     LanguageService, WorkspaceManager,
     types::{
@@ -14,9 +13,10 @@ use rayon::prelude::*;
 use std::{
     borrow::Cow,
     collections::{HashMap, HashSet},
-    sync::{Arc, Mutex, RwLock},
+    sync::{Mutex, RwLock},
     thread,
 };
+use std::sync::Arc;
 
 pub mod completion;
 pub mod diagnostics;
@@ -510,7 +510,7 @@ impl TypeScriptLanguageService {
     }
 
     /// Get members of a type
-    fn get_type_members(&self, type_name: &str, table: &SymbolTable) -> Vec<super::symbols::Symbol> {
+    fn get_type_members(&self, type_name: &str, table: &SymbolTable) -> Vec<symbols::Symbol> {
         let mut members = Vec::new();
 
         for symbol in table.all_symbols() {
@@ -810,6 +810,97 @@ impl TypeScriptLanguageService {
     fn update_completion_usage(&self, item: &str) {
         let mut usage = self.completion_usage.lock().unwrap();
         *usage.entry(item.to_string()).or_insert(0) += 1;
+    }
+
+    /// 检查行是否是符号的定义行
+    fn is_definition_line(&self, line: &str, symbol_name: &str) -> bool {
+        let trimmed = line.trim();
+
+        // 检查常见的定义模式
+        let definition_patterns = [
+            format!("const {}", symbol_name),
+            format!("let {}", symbol_name),
+            format!("var {}", symbol_name),
+            format!("function {}", symbol_name),
+            format!("class {}", symbol_name),
+            format!("interface {}", symbol_name),
+            format!("type {}", symbol_name),
+            format!("enum {}", symbol_name),
+            format!("export const {}", symbol_name),
+            format!("export let {}", symbol_name),
+            format!("export var {}", symbol_name),
+            format!("export function {}", symbol_name),
+            format!("export class {}", symbol_name),
+            format!("export interface {}", symbol_name),
+            format!("export type {}", symbol_name),
+            format!("export enum {}", symbol_name),
+        ];
+
+        // 检查是否匹配任何定义模式
+        if definition_patterns.iter().any(|p| trimmed.starts_with(p)) {
+            return true;
+        }
+
+        // 检查属性定义模式
+        let property_patterns = [format!("{}:", symbol_name), format!("{} =", symbol_name)];
+
+        property_patterns.iter().any(|p| trimmed.contains(p))
+    }
+
+    /// 在单个文件中查找引用
+    fn find_references_in_file(&self, uri: &str, content: &str, symbol_name: &str) -> Vec<LocationRange> {
+        let mut references = Vec::new();
+        let mut reference_set = HashSet::new();
+
+        /// 首先尝试使用符号表来查找引用
+        if let Some(symbol_table) = self.get_symbol_table(uri) {
+            for symbol in symbol_table.find_all_by_name(symbol_name) {
+                let location = LocationRange { uri: Arc::from(uri), range: symbol.range.clone() };
+                let key = (uri, symbol.range.start, symbol.range.end);
+                if reference_set.insert(key) {
+                    references.push(location);
+                }
+            }
+        }
+
+        /// 然后使用基于文本的查找作为补充
+        for (line_idx, line) in content.lines().enumerate() {
+            let mut current_pos = 0;
+            while let Some(start) = line[current_pos..].find(symbol_name) {
+                let actual_start = current_pos + start;
+                let end = actual_start + symbol_name.len();
+
+                if self.is_complete_symbol(line, actual_start, end) {
+                    let start_offset = self.get_offset(content, line_idx, actual_start);
+                    let end_offset = self.get_offset(content, line_idx, end);
+
+                    /// 检查是否已经添加过这个引用
+                    let key = (uri, start_offset, end_offset);
+                    if reference_set.insert(key) {
+                        references
+                            .push(LocationRange { uri: Arc::from(uri), range: Range { start: start_offset, end: end_offset } });
+                    }
+                }
+
+                current_pos = end;
+            }
+        }
+
+        references
+    }
+
+    /// 检查是否是写引用（赋值）
+    fn is_write_reference(&self, line: &str, symbol_start: usize) -> bool {
+        let after_symbol = &line[symbol_start..];
+
+        /// 检查后面是否有赋值操作符
+        let trimmed = after_symbol.trim_start();
+        trimmed.starts_with('=') && !trimmed.starts_with("==")
+    }
+
+    /// 转换偏移量为位置
+    fn offset_to_position(&self, text: &str, offset: usize) -> (usize, usize) {
+        self.get_line_and_column(text, offset)
     }
 
     /// Calculate relevance score for a completion item
@@ -1142,40 +1233,7 @@ impl LanguageService for TypeScriptLanguageService {
         }
     }
 
-    /// 检查行是否是符号的定义行
-    fn is_definition_line(&self, line: &str, symbol_name: &str) -> bool {
-        let trimmed = line.trim();
 
-        // 检查常见的定义模式
-        let definition_patterns = [
-            format!("const {}", symbol_name),
-            format!("let {}", symbol_name),
-            format!("var {}", symbol_name),
-            format!("function {}", symbol_name),
-            format!("class {}", symbol_name),
-            format!("interface {}", symbol_name),
-            format!("type {}", symbol_name),
-            format!("enum {}", symbol_name),
-            format!("export const {}", symbol_name),
-            format!("export let {}", symbol_name),
-            format!("export var {}", symbol_name),
-            format!("export function {}", symbol_name),
-            format!("export class {}", symbol_name),
-            format!("export interface {}", symbol_name),
-            format!("export type {}", symbol_name),
-            format!("export enum {}", symbol_name),
-        ];
-
-        // 检查是否匹配任何定义模式
-        if definition_patterns.iter().any(|p| trimmed.starts_with(p)) {
-            return true;
-        }
-
-        // 检查属性定义模式
-        let property_patterns = [format!("{}:", symbol_name), format!("{} =", symbol_name)];
-
-        property_patterns.iter().any(|p| trimmed.contains(p))
-    }
 
     fn references<'a>(
         &'a self,
@@ -1221,56 +1279,7 @@ impl LanguageService for TypeScriptLanguageService {
         }
     }
 
-    /// 在单个文件中查找引用
-    fn find_references_in_file(&self, uri: &str, content: &str, symbol_name: &str) -> Vec<LocationRange> {
-        let mut references = Vec::new();
-        let mut reference_set = HashSet::new();
 
-        /// 首先尝试使用符号表来查找引用
-        if let Some(symbol_table) = self.get_symbol_table(uri) {
-            for symbol in symbol_table.find_all_by_name(symbol_name) {
-                let location = LocationRange { uri: Arc::from(uri), range: symbol.range.clone() };
-                let key = (uri, symbol.range.start, symbol.range.end);
-                if reference_set.insert(key) {
-                    references.push(location);
-                }
-            }
-        }
-
-        /// 然后使用基于文本的查找作为补充
-        for (line_idx, line) in content.lines().enumerate() {
-            let mut current_pos = 0;
-            while let Some(start) = line[current_pos..].find(symbol_name) {
-                let actual_start = current_pos + start;
-                let end = actual_start + symbol_name.len();
-
-                if self.is_complete_symbol(line, actual_start, end) {
-                    let start_offset = self.get_offset(content, line_idx, actual_start);
-                    let end_offset = self.get_offset(content, line_idx, end);
-
-                    /// 检查是否已经添加过这个引用
-                    let key = (uri, start_offset, end_offset);
-                    if reference_set.insert(key) {
-                        references
-                            .push(LocationRange { uri: Arc::from(uri), range: Range { start: start_offset, end: end_offset } });
-                    }
-                }
-
-                current_pos = end;
-            }
-        }
-
-        references
-    }
-
-    /// 检查是否是写引用（赋值）
-    fn is_write_reference(&self, line: &str, symbol_start: usize) -> bool {
-        let after_symbol = &line[symbol_start..];
-
-        /// 检查后面是否有赋值操作符
-        let trimmed = after_symbol.trim_start();
-        trimmed.starts_with('=') && !trimmed.starts_with("==")
-    }
 
     fn document_symbols<'a>(&'a self, uri: &'a str) -> impl std::future::Future<Output = Vec<StructureItem>> + Send + 'a {
         async move {

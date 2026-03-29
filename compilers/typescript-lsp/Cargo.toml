@@ -23,6 +23,7 @@ tokio = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
+rayon = { workspace = true }
 oak-lsp = { workspace = true }
 oak-core = { workspace = true }
 oak-vfs = { workspace = true }

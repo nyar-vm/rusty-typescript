@@ -1,6 +1,6 @@
 #![doc = include_str!("readme.md")]
 use oak_core::{Lexer, SourceText, TextEdit, TokenType, UniversalTokenRole};
-use typescript::{
+use oak_typescript::{
     TypeScriptLanguage,
     lexer::{TypeScriptLexer, token_type::TypeScriptTokenType},
 };
