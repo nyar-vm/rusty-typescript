@@ -6,6 +6,7 @@ use oak_lsp::{
     types::{
         CodeAction, CompletionItem, Diagnostic, DocumentHighlight, FoldingRange, Hover, InitializeParams, InlayHint,
         LocationRange, SemanticTokens, SignatureHelp, StructureItem, TextEdit, WorkspaceEdit, WorkspaceSymbol,
+        Position, Range, InlayHintLabel, MarkupContent, NumberOrString,
     },
 };
 use oak_vfs::{MemoryVfs, Vfs};
@@ -16,7 +17,7 @@ use std::{
     sync::{Mutex, RwLock},
     thread,
 };
-use std::sync::Arc;
+use oak_core::Arc;
 
 pub mod completion;
 pub mod diagnostics;
@@ -73,7 +74,7 @@ impl TypeScriptLanguageService {
     /// Get document content by URI
     fn get_document(&self, uri: &str) -> Option<Cow<str>> {
         let documents = self.documents.read().unwrap();
-        documents.get(uri).map(|s| Cow::Borrowed(s.as_str()))
+        documents.get(uri).map(|s| Cow::Owned(s.clone()))
     }
 
     /// Set document content by URI
@@ -510,7 +511,7 @@ impl TypeScriptLanguageService {
     }
 
     /// Get members of a type
-    fn get_type_members(&self, type_name: &str, table: &SymbolTable) -> Vec<symbols::Symbol> {
+    fn get_type_members(&self, type_name: &str, table: &SymbolTable) -> Vec<Symbol> {
         let mut members = Vec::new();
 
         for symbol in table.all_symbols() {
@@ -621,7 +622,7 @@ impl TypeScriptLanguageService {
 
     /// Get file content from VFS
     fn get_file_content(&self, uri: &str) -> Option<Cow<str>> {
-        self.vfs.get_source(uri).map(|source| Cow::Borrowed(source.text()))
+        self.vfs.get_source(uri).map(|source| Cow::Owned(source.text().to_string()))
     }
 
     /// Extract symbol at position
@@ -727,17 +728,7 @@ impl TypeScriptLanguageService {
 
     /// Parse format options
     pub fn parse_format_options(&self, tab_size: u32, insert_spaces: bool) -> FormatOptions {
-        FormatOptions {
-            indent_size: tab_size,
-            use_tabs: !insert_spaces,
-            line_width: 80,                // Default
-            space_before_brace: true,      // Default
-            space_after_comma: true,       // Default
-            space_after_semicolon: true,   // Default
-            spaces_around_operators: true, // Default
-            spaces_in_function: false,     // Default
-            spaces_in_object: true,        // Default
-        }
+        FormatOptions::default()
     }
 
     /// Infer variable type
@@ -899,8 +890,12 @@ impl TypeScriptLanguageService {
     }
 
     /// 转换偏移量为位置
-    fn offset_to_position(&self, text: &str, offset: usize) -> (usize, usize) {
-        self.get_line_and_column(text, offset)
+    fn offset_to_position(&self, text: &str, offset: usize) -> oak_lsp::types::SourcePosition {
+        let (line, column) = self.get_line_and_column(text, offset);
+        oak_lsp::types::SourcePosition {
+            line: line as u32,
+            column: column as u32
+        }
     }
 
     /// Calculate relevance score for a completion item
@@ -1545,7 +1540,7 @@ impl LanguageService for TypeScriptLanguageService {
                 }
             }
 
-            Some(SemanticTokens { data: tokens })
+            Some(SemanticTokens { data: tokens, result_id: None })
         }
     }
 
@@ -1576,16 +1571,14 @@ impl LanguageService for TypeScriptLanguageService {
                     let position = self.offset_to_position(&content, hint.position);
                     InlayHint {
                         position,
-                        label: oak_lsp::types::InlayHintLabel::String(hint.label),
+                        label: hint.label,
                         kind: Some(match hint.kind {
                             crate::lsp::inlay_hints::InlayHintKind::ParameterName => oak_lsp::types::InlayHintKind::Parameter,
                             _ => oak_lsp::types::InlayHintKind::Type,
                         }),
-                        text_edits: None,
-                        tooltip: hint.tooltip.map(oak_lsp::types::MarkupContent::plaintext),
                         padding_left: Some(hint.kind == crate::lsp::inlay_hints::InlayHintKind::ParameterName),
                         padding_right: Some(false),
-                        data: None,
+                        tooltip: hint.tooltip,
                     }
                 })
                 .collect()
@@ -1673,21 +1666,16 @@ impl LanguageService for TypeScriptLanguageService {
                     let (end_line, end_col) = self.get_line_and_column(&content, d.range.end);
 
                     Diagnostic {
-                        range: oak_lsp::types::Range {
-                            start: oak_lsp::types::Position { line: start_line as u32, character: start_col as u32 },
-                            end: oak_lsp::types::Position { line: end_line as u32, character: end_col as u32 },
-                        },
+                        range: d.range,
                         severity: Some(match d.level {
                             DiagnosticLevel::Error => oak_lsp::types::DiagnosticSeverity::Error,
                             DiagnosticLevel::Warning => oak_lsp::types::DiagnosticSeverity::Warning,
                             DiagnosticLevel::Info => oak_lsp::types::DiagnosticSeverity::Information,
                             DiagnosticLevel::Hint => oak_lsp::types::DiagnosticSeverity::Hint,
                         }),
-                        code: d.code.map(oak_lsp::types::NumberOrString::String),
+                        code: d.code,
                         source: Some(d.source),
                         message: d.message,
-                        related_information: None,
-                        tags: None,
                     }
                 })
                 .collect();

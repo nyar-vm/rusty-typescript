@@ -139,13 +139,13 @@ impl InlayHintProvider {
                 if let Some(var_name) = self.extract_variable_name(line) {
                     /// 查找符号表中的类型信息
                     if let Some(symbol) = self.symbol_table.find_by_name(&var_name) {
-                        if let Some(ref inferred_type) = symbol.inferred_type {
+                        if let Some(ref type_annotation) = symbol.type_annotation {
                             /// 在变量名后添加类型提示
                             if let Some(var_end) = line.find(&var_name) {
                                 let var_end_pos = var_end + var_name.len();
                                 hints.push(InlayHint::type_inference(
                                     base_offset + line_offset + var_end_pos,
-                                    inferred_type.clone(),
+                                    type_annotation.clone(),
                                 ));
                             }
                         }

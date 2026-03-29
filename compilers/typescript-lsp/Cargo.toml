@@ -27,3 +27,4 @@ rayon = { workspace = true }
 oak-lsp = { workspace = true }
 oak-core = { workspace = true }
 oak-vfs = { workspace = true }
+oak-typescript = { workspace = true }

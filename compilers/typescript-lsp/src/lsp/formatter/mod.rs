@@ -35,6 +35,7 @@ pub enum LineEnding {
 
 /// 代码格式化选项
 #[derive(Debug, Clone)]
+#[derive(Eq, Hash, PartialEq)]
 pub struct FormatOptions {
     /// 缩进大小（空格数）
     pub indent_size: u32,
@@ -366,7 +367,7 @@ impl Formatter {
 
                     if pending_arrow_check && paren_depth == 0 {
                         pending_arrow_check = false;
-                        if next_char == '=' && chars.peek().map(|&&c| c == '>').unwrap_or(false) {
+                        if next_char == '=' && chars.peek().map(|&c| c == '>').unwrap_or(false) {
                             in_arrow_function = true;
                         }
                     }
@@ -420,9 +421,9 @@ impl Formatter {
                                     // 单参数箭头函数，省略括号
                                     // 移除括号
                                     let last_paren_pos = formatted.rfind('(').unwrap_or(0);
-                                    let param = &formatted[last_paren_pos + 1..formatted.len() - 1].trim();
+                                    let param = formatted[last_paren_pos + 1..formatted.len() - 1].trim().to_string();
                                     formatted.truncate(last_paren_pos);
-                                    formatted.push_str(param);
+                                    formatted.push_str(&param);
                                 }
                             }
                         }

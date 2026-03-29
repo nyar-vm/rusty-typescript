@@ -35,6 +35,12 @@ impl SymbolCollector {
         &self.symbol_table
     }
 
+    /// 增量收集符号
+    pub fn collect_incremental(&mut self, source: &str, range: core::range::Range<usize>) -> &SymbolTable {
+        // 简单实现：重新收集整个文件
+        self.collect(source)
+    }
+
     /// 解析声明语句
     fn parse_declarations(&mut self, source: &str) {
         let lines: Vec<&str> = source.lines().collect();
@@ -66,12 +72,15 @@ impl SymbolCollector {
 
     /// 跟踪大括号以管理作用域
     fn track_braces(&mut self, line: &str, _line_start: usize, brace_stack: &mut Vec<(usize, ScopeType)>) {
-        let mut chars = line.chars().peekable();
+        let chars: Vec<char> = line.chars().collect();
+        let mut index = 0;
 
-        while let Some(ch) = chars.next() {
-            match ch {
+        while index < chars.len() {
+            match chars[index] {
                 '{' => {
-                    let scope_type = self.determine_scope_type(&chars.collect::<String>());
+                    // 使用字符串切片而不是消耗迭代器
+                    let remaining = &line[index+1..];
+                    let scope_type = self.determine_scope_type(remaining);
                     brace_stack.push((0, scope_type));
                     self.symbol_table.enter_scope(0, scope_type);
                 }
@@ -82,6 +91,7 @@ impl SymbolCollector {
                 }
                 _ => {}
             }
+            index += 1;
         }
     }
 

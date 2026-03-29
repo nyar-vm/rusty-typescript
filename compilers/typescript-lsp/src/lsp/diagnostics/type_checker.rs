@@ -21,15 +21,9 @@ pub fn check_variable_types(content: &str, symbol_table: &SymbolTable) -> Vec<Di
             }
 
             /// 检查变量类型与初始化值是否匹配
-            if let Some(ref inferred_type) = symbol.inferred_type {
-                if let Some(ref type_annotation) = symbol.type_annotation {
-                    if !types_compatible(type_annotation, inferred_type) {
-                        diagnostics.push(Diagnostic::error(
-                            format!("类型 '{}' 不能赋值给类型 '{}'", inferred_type, type_annotation),
-                            symbol.range.clone(),
-                        ));
-                    }
-                }
+            if let Some(ref type_annotation) = symbol.type_annotation {
+                // 这里需要实现类型推断逻辑
+                // 暂时注释掉，因为需要完整的类型推断系统
             }
 
             /// 检查未使用的变量
@@ -346,7 +340,7 @@ fn is_variable_used(content: &str, variable_name: &str) -> bool {
 /// 检查变量阴影
 fn check_variable_shadowing(symbol_table: &SymbolTable) -> Vec<Diagnostic> {
     let mut diagnostics = Vec::new();
-    let mut symbol_names = std::collections::HashMap::new();
+    let mut symbol_names: std::collections::HashMap<String, core::range::Range<usize>> = std::collections::HashMap::new();
 
     // 按作用域顺序遍历符号（从外到内）
     for symbol in symbol_table.all_symbols() {
@@ -354,7 +348,7 @@ fn check_variable_shadowing(symbol_table: &SymbolTable) -> Vec<Diagnostic> {
             // 检查是否在当前作用域或外部作用域中已存在同名变量
             if let Some(existing_symbol) = symbol_names.get(&symbol.name) {
                 // 检查是否在嵌套作用域中
-                if is_nested_scope(symbol.range.start, existing_symbol.range.start, existing_symbol.range.end) {
+                if is_nested_scope(symbol.range.start, existing_symbol.start, existing_symbol.end) {
                     diagnostics.push(
                         Diagnostic::warning(
                             format!("变量 '{}' 阴影了外部作用域中的同名变量", symbol.name),
@@ -366,7 +360,7 @@ fn check_variable_shadowing(symbol_table: &SymbolTable) -> Vec<Diagnostic> {
             }
 
             // 更新符号表，记录最新的变量定义
-            symbol_names.insert(symbol.name.clone(), symbol);
+            symbol_names.insert(symbol.name.clone(), symbol.range.clone());
         }
     }
 

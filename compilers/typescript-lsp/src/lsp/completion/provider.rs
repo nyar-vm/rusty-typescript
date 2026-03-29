@@ -3,6 +3,7 @@
 //! 根据不同的上下文生成相应的补全建议。
 
 use super::*;
+use crate::lsp::completion::context::CompletionContextType;
 use crate::lsp::symbols::{Symbol, SymbolKind, SymbolTable};
 use oak_lsp::types::CompletionItem;
 
@@ -420,7 +421,7 @@ impl CompletionProvider {
     }
 
     /// 获取类型成员
-    fn get_type_members(type_name: &str, table: &SymbolTable) -> Vec<&Symbol> {
+    fn get_type_members<'a>(type_name: &str, table: &'a SymbolTable) -> Vec<&'a Symbol> {
         let mut members = Vec::new();
 
         for symbol in table.all_symbols() {
