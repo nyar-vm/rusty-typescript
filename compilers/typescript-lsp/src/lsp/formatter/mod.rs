@@ -2,7 +2,7 @@ use oak_core::Range;
 use oak_lsp::types::TextEdit;
 
 /// 尾随逗号选项
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TrailingComma {
     /// 不使用尾随逗号
     None,
@@ -14,7 +14,7 @@ pub enum TrailingComma {
 }
 
 /// 箭头函数参数括号选项
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ArrowParens {
     /// 单参数时省略括号
     Avoid,
@@ -24,7 +24,7 @@ pub enum ArrowParens {
 }
 
 /// 换行风格选项
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum LineEnding {
     /// Windows 风格（CRLF）
     CRLF,
