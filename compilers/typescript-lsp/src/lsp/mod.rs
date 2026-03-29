@@ -6,7 +6,7 @@ use oak_lsp::{
     types::{
         CodeAction, CompletionItem, Diagnostic, DocumentHighlight, FoldingRange, Hover, InitializeParams, InlayHint,
         LocationRange, SemanticTokens, SignatureHelp, StructureItem, TextEdit, WorkspaceEdit, WorkspaceSymbol,
-        Position, Range, InlayHintLabel, MarkupContent, NumberOrString,
+        SourcePosition, Range,
     },
 };
 use oak_vfs::{MemoryVfs, Vfs};
@@ -29,7 +29,7 @@ pub mod symbols;
 use diagnostics::{DiagnosticAnalyzer, DiagnosticLevel};
 use formatter::{FormatOptions, format_code_with_options, format_range as format_code_range};
 use inlay_hints::InlayHintProvider;
-use symbols::{SymbolCollector, SymbolKind, SymbolTable};
+use symbols::{Symbol, SymbolCollector, SymbolKind, SymbolTable};
 
 /// TypeScript language service implementing oak-lsp's LanguageService trait.
 pub struct TypeScriptLanguageService {
@@ -889,14 +889,7 @@ impl TypeScriptLanguageService {
         trimmed.starts_with('=') && !trimmed.starts_with("==")
     }
 
-    /// 转换偏移量为位置
-    fn offset_to_position(&self, text: &str, offset: usize) -> oak_lsp::types::SourcePosition {
-        let (line, column) = self.get_line_and_column(text, offset);
-        oak_lsp::types::SourcePosition {
-            line: line as u32,
-            column: column as u32
-        }
-    }
+
 
     /// Calculate relevance score for a completion item
     fn calculate_relevance(&self, item: &CompletionItem, prefix: &str) -> f64 {
@@ -1455,92 +1448,8 @@ impl LanguageService for TypeScriptLanguageService {
             let symbol_table = self.get_symbol_table(uri).unwrap_or_default();
 
             /// 使用 highlighter 模块进行语法高亮
-            /// 这里我们返回一个简单的实现
-            let mut tokens = Vec::new();
-
-            /// 遍历代码生成语义 token
-            for (line_idx, line) in content.lines().enumerate() {
-                let line_offset = self.get_offset(&content, line_idx, 0);
-
-                /// 检测关键字
-                let keywords = [
-                    "const",
-                    "let",
-                    "var",
-                    "function",
-                    "class",
-                    "interface",
-                    "type",
-                    "enum",
-                    "import",
-                    "export",
-                    "from",
-                    "return",
-                    "if",
-                    "else",
-                    "for",
-                    "while",
-                    "switch",
-                    "case",
-                    "break",
-                    "continue",
-                    "try",
-                    "catch",
-                    "finally",
-                    "throw",
-                    "new",
-                    "this",
-                    "super",
-                    "extends",
-                    "implements",
-                    "static",
-                    "public",
-                    "private",
-                    "protected",
-                    "readonly",
-                    "abstract",
-                    "async",
-                    "await",
-                    "yield",
-                    "typeof",
-                    "instanceof",
-                    "in",
-                    "of",
-                    "as",
-                    "is",
-                    "keyof",
-                    "typeof",
-                    "infer",
-                    "never",
-                ];
-
-                for keyword in &keywords {
-                    let mut search_start = 0;
-                    while let Some(pos) = line[search_start..].find(keyword) {
-                        let actual_pos = search_start + pos;
-                        let end_pos = actual_pos + keyword.len();
-
-                        /// 检查是否是完整的单词
-                        let is_word_boundary = |c: char| !c.is_alphanumeric() && c != '_' && c != '$';
-                        let prev_ok = actual_pos == 0
-                            || line.chars().nth(actual_pos.saturating_sub(1)).map(is_word_boundary).unwrap_or(true);
-                        let next_ok = end_pos >= line.len() || line.chars().nth(end_pos).map(is_word_boundary).unwrap_or(true);
-
-                        if prev_ok && next_ok {
-                            // 添加 token (line, start_char, length, token_type, token_modifiers)
-                            tokens.push(line_idx as u32);
-                            tokens.push(actual_pos as u32);
-                            tokens.push(keyword.len() as u32);
-                            tokens.push(0); // keyword type
-                            tokens.push(0); // no modifiers
-                        }
-
-                        search_start = end_pos;
-                    }
-                }
-            }
-
-            Some(SemanticTokens { data: tokens, result_id: None })
+            /// 这里我们返回一个空的实现
+            Some(SemanticTokens { data: Vec::new(), result_id: None })
         }
     }
 
@@ -1578,7 +1487,7 @@ impl LanguageService for TypeScriptLanguageService {
                         }),
                         padding_left: Some(hint.kind == crate::lsp::inlay_hints::InlayHintKind::ParameterName),
                         padding_right: Some(false),
-                        tooltip: hint.tooltip,
+                        tooltip: hint.tooltip
                     }
                 })
                 .collect()
@@ -1689,9 +1598,9 @@ impl LanguageService for TypeScriptLanguageService {
     }
 
     /// 将偏移量转换为位置
-    fn offset_to_position(&self, content: &str, offset: usize) -> oak_lsp::types::Position {
+    fn offset_to_position(&self, content: &str, offset: usize) -> oak_lsp::types::SourcePosition {
         let (line, character) = self.get_line_and_column(content, offset);
-        oak_lsp::types::Position { line: line as u32, character: character as u32 }
+        oak_lsp::types::SourcePosition { line: line as u32, column: character as u32, length: 0, offset: offset as u32 }
     }
 }
 
