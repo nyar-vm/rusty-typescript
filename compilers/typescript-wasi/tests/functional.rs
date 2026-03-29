@@ -2,7 +2,7 @@
 //!
 //! 测试 WebAssembly 运行时的核心功能，验证其正常运行。
 
-use typescript_wasi::{fs::WasiFs, memory::WasiMemory, WasiRuntime};
+use typescript_wasi::{WasiRuntime, fs::WasiFs, memory::WasiMemory};
 
 /// 测试 WASI 运行时基本功能
 #[test]

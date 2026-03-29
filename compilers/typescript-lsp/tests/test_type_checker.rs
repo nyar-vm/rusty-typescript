@@ -1,4 +1,7 @@
-use typescript_lsp::lsp::diagnostics::type_checker::{is_valid_type_annotation, types_compatible, is_valid_identifier, extract_argument_count, extract_param_count, is_nested_scope};
+use typescript_lsp::lsp::diagnostics::type_checker::{
+    extract_argument_count, extract_param_count, is_nested_scope, is_valid_identifier, is_valid_type_annotation,
+    types_compatible,
+};
 
 #[test]
 fn test_valid_type_annotation() {

@@ -480,5 +480,3 @@ fn matches_pattern(text: &str, pattern: &str) -> bool {
 
     normalized_text == normalized_pattern
 }
-
-

@@ -1,5 +1,5 @@
-use oak_lsp::types::TextEdit;
 use oak_core::Range;
+use oak_lsp::types::TextEdit;
 
 /// 尾随逗号选项
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -171,12 +171,14 @@ impl Formatter {
                         string_char = '"';
                         let quote = if self.options.single_quote { '\'' } else { '"' };
                         self.append_char(&mut formatted, quote, indent_level, line_start);
-                    } else if string_char == '"' {
+                    }
+                    else if string_char == '"' {
                         in_string = false;
                         string_char = '\0';
                         let quote = if self.options.single_quote { '\'' } else { '"' };
                         self.append_char(&mut formatted, quote, indent_level, line_start);
-                    } else {
+                    }
+                    else {
                         self.append_char(&mut formatted, c, indent_level, line_start);
                     }
                     line_start = false;
@@ -187,12 +189,14 @@ impl Formatter {
                         string_char = '\'';
                         let quote = if self.options.single_quote { '\'' } else { '"' };
                         self.append_char(&mut formatted, quote, indent_level, line_start);
-                    } else if string_char == '\'' {
+                    }
+                    else if string_char == '\'' {
                         in_string = false;
                         string_char = '\0';
                         let quote = if self.options.single_quote { '\'' } else { '"' };
                         self.append_char(&mut formatted, quote, indent_level, line_start);
-                    } else {
+                    }
+                    else {
                         self.append_char(&mut formatted, c, indent_level, line_start);
                     }
                     line_start = false;
@@ -314,9 +318,11 @@ impl Formatter {
                         if self.options.spaces_around_operators {
                             formatted.push(' ');
                         }
-                    } else if !self.options.spaces_around_operators {
+                    }
+                    else if !self.options.spaces_around_operators {
                         self.append_char(&mut formatted, '<', indent_level, line_start);
-                    } else {
+                    }
+                    else {
                         self.handle_operator(&mut formatted, c, indent_level, line_start);
                     }
                     line_start = false;
@@ -386,7 +392,7 @@ impl Formatter {
                             let mut param_count = 0;
                             let mut found_left_paren = false;
                             let mut params_str = String::new();
-                            
+
                             // 从后向前查找最近的左括号
                             for (i, ch) in formatted.char_indices().rev() {
                                 match ch {
@@ -405,11 +411,11 @@ impl Formatter {
                                     _ => {}
                                 }
                             }
-                            
+
                             if found_left_paren {
                                 let params_trimmed = params_str.trim();
                                 param_count = params_trimmed.split(',').filter(|p| !p.trim().is_empty()).count();
-                                
+
                                 if param_count == 1 {
                                     // 单参数箭头函数，省略括号
                                     // 移除括号
@@ -420,7 +426,7 @@ impl Formatter {
                                 }
                             }
                         }
-                        
+
                         formatted.push_str("=>");
                         chars.next();
                         line_start = false;
@@ -430,8 +436,6 @@ impl Formatter {
                     self.handle_operator(&mut formatted, c, indent_level, line_start);
                     line_start = false;
                 }
-
-
 
                 ';' if !in_string && !in_comment && !in_multiline_comment && !in_template => {
                     in_type_annotation = false;
@@ -467,14 +471,14 @@ impl Formatter {
                 {
                     if c == '/' && (prev_char == '*' || prev_char == '/') {
                         self.append_char(&mut formatted, c, indent_level, line_start);
-                    } else {
+                    }
+                    else {
                         self.handle_operator(&mut formatted, c, indent_level, line_start);
                     }
                     line_start = false;
                 }
 
-                ' ' if line_start || (prev_char == ' ' && !in_string && !in_comment && !in_multiline_comment) => {
-                }
+                ' ' if line_start || (prev_char == ' ' && !in_string && !in_comment && !in_multiline_comment) => {}
 
                 _ => {
                     self.append_char(&mut formatted, c, indent_level, line_start);
@@ -551,7 +555,8 @@ impl Formatter {
     fn normalize_semicolons(&self, text: String) -> String {
         if self.options.semicolons {
             text
-        } else {
+        }
+        else {
             let mut result = String::new();
             let mut chars = text.chars().peekable();
             let mut in_string = false;
@@ -573,7 +578,8 @@ impl Formatter {
                     ';' if !in_string => {
                         let next_char = chars.peek().copied().unwrap_or('\0');
                         if next_char == '\n' || next_char == '\r' || next_char == '}' || next_char == '\0' {
-                        } else {
+                        }
+                        else {
                             result.push(c);
                         }
                     }
@@ -666,20 +672,23 @@ impl Formatter {
                     let mut needs_trailing_comma = false;
                     let mut temp_chars = result.chars().rev();
                     let mut seen_non_whitespace = false;
-                    
+
                     while let Some(ch) = temp_chars.next() {
                         if ch.is_whitespace() {
                             continue;
-                        } else if ch == '[' {
+                        }
+                        else if ch == '[' {
                             break;
-                        } else if ch != ',' {
+                        }
+                        else if ch != ',' {
                             needs_trailing_comma = true;
                             break;
-                        } else {
+                        }
+                        else {
                             break;
                         }
                     }
-                    
+
                     if needs_trailing_comma {
                         result.push(',');
                     }
@@ -695,20 +704,23 @@ impl Formatter {
                     let mut needs_trailing_comma = false;
                     let mut temp_chars = result.chars().rev();
                     let mut seen_non_whitespace = false;
-                    
+
                     while let Some(ch) = temp_chars.next() {
                         if ch.is_whitespace() {
                             continue;
-                        } else if ch == '{' {
+                        }
+                        else if ch == '{' {
                             break;
-                        } else if ch != ',' {
+                        }
+                        else if ch != ',' {
                             needs_trailing_comma = true;
                             break;
-                        } else {
+                        }
+                        else {
                             break;
                         }
                     }
-                    
+
                     if needs_trailing_comma {
                         result.push(',');
                     }
@@ -724,20 +736,23 @@ impl Formatter {
                     let mut needs_trailing_comma = false;
                     let mut temp_chars = result.chars().rev();
                     let mut seen_non_whitespace = false;
-                    
+
                     while let Some(ch) = temp_chars.next() {
                         if ch.is_whitespace() {
                             continue;
-                        } else if ch == '(' {
+                        }
+                        else if ch == '(' {
                             break;
-                        } else if ch != ',' {
+                        }
+                        else if ch != ',' {
                             needs_trailing_comma = true;
                             break;
-                        } else {
+                        }
+                        else {
                             break;
                         }
                     }
-                    
+
                     if needs_trailing_comma {
                         result.push(',');
                     }
@@ -765,7 +780,8 @@ impl Formatter {
     fn append_indent(&self, formatted: &mut String, indent_level: u32) {
         if self.options.use_tabs {
             formatted.push_str(&"\t".repeat(indent_level as usize));
-        } else {
+        }
+        else {
             formatted.push_str(&" ".repeat((indent_level * self.options.indent_size) as usize));
         }
     }
@@ -793,8 +809,5 @@ pub fn format_range(text: &str, start: usize, end: usize, options: FormatOptions
 /// 创建用于格式化整个文档的 TextEdit
 pub fn create_formatting_edit(text: &str, options: FormatOptions) -> TextEdit {
     let formatted = format_code_with_options(text, options);
-    TextEdit {
-        range: Range { start: 0, end: text.len() },
-        new_text: formatted,
-    }
+    TextEdit { range: Range { start: 0, end: text.len() }, new_text: formatted }
 }

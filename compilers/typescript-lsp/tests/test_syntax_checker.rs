@@ -1,4 +1,7 @@
-use typescript_lsp::lsp::diagnostics::syntax_checker::{check_bracket_matching, check_quote_matching, check_keyword_usage, check_switch_statements, check_try_catch_statements, check_unused_imports};
+use typescript_lsp::lsp::diagnostics::syntax_checker::{
+    check_bracket_matching, check_keyword_usage, check_quote_matching, check_switch_statements, check_try_catch_statements,
+    check_unused_imports,
+};
 
 #[test]
 fn test_bracket_matching() {

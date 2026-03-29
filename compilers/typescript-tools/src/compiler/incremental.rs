@@ -387,5 +387,3 @@ fn resolve_module_path(base_dir: &Path, module_path: &str) -> CompileResult<Path
     /// 返回原始路径
     Ok(resolved.canonicalize().unwrap_or(resolved))
 }
-
-

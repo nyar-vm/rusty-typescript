@@ -149,13 +149,7 @@ pub enum ScopeType {
 impl Scope {
     /// 创建新作用域
     pub fn new(depth: usize, start_offset: usize, scope_type: ScopeType) -> Self {
-        Self {
-            depth,
-            start_offset,
-            end_offset: None,
-            scope_type,
-            parent_index: None,
-        }
+        Self { depth, start_offset, end_offset: None, scope_type, parent_index: None }
     }
 
     /// 设置父作用域
@@ -171,8 +165,7 @@ impl Scope {
 
     /// 检查位置是否在作用域内
     pub fn contains(&self, offset: usize) -> bool {
-        offset >= self.start_offset
-            && self.end_offset.map_or(true, |end| offset <= end)
+        offset >= self.start_offset && self.end_offset.map_or(true, |end| offset <= end)
     }
 }
 
@@ -204,8 +197,7 @@ impl SymbolTable {
     pub fn enter_scope(&mut self, start_offset: usize, scope_type: ScopeType) {
         self.current_depth += 1;
         let parent_index = self.scopes.len() - 1;
-        let scope = Scope::new(self.current_depth, start_offset, scope_type)
-            .with_parent(parent_index);
+        let scope = Scope::new(self.current_depth, start_offset, scope_type).with_parent(parent_index);
         self.scopes.push(scope);
     }
 
@@ -224,65 +216,49 @@ impl SymbolTable {
         symbol.scope_depth = self.current_depth;
         let index = self.symbols.len();
         self.symbols.push(symbol.clone());
-        self.name_index
-            .entry(symbol.name.clone())
-            .or_default()
-            .push(index);
+        self.name_index.entry(symbol.name.clone()).or_default().push(index);
     }
 
     /// 根据名称查找符号（当前作用域及父作用域）
     pub fn find_by_name(&self, name: &str) -> Option<&Symbol> {
-        self.name_index
-            .get(name)
-            .and_then(|indices| {
-                // 首先查找导出的符号
-                for &idx in indices.iter().rev() {
-                    if let Some(symbol) = self.symbols.get(idx) {
-                        if symbol.is_exported && symbol.scope_depth <= self.current_depth {
-                            return Some(symbol);
-                        }
+        self.name_index.get(name).and_then(|indices| {
+            // 首先查找导出的符号
+            for &idx in indices.iter().rev() {
+                if let Some(symbol) = self.symbols.get(idx) {
+                    if symbol.is_exported && symbol.scope_depth <= self.current_depth {
+                        return Some(symbol);
                     }
                 }
-                
-                // 如果没有找到导出的符号，查找非导出的符号
-                for &idx in indices.iter().rev() {
-                    if let Some(symbol) = self.symbols.get(idx) {
-                        if symbol.scope_depth <= self.current_depth {
-                            return Some(symbol);
-                        }
+            }
+
+            // 如果没有找到导出的符号，查找非导出的符号
+            for &idx in indices.iter().rev() {
+                if let Some(symbol) = self.symbols.get(idx) {
+                    if symbol.scope_depth <= self.current_depth {
+                        return Some(symbol);
                     }
                 }
-                None
-            })
+            }
+            None
+        })
     }
 
     /// 查找所有匹配名称的符号
     pub fn find_all_by_name(&self, name: &str) -> Vec<&Symbol> {
         self.name_index
             .get(name)
-            .map(|indices| {
-                indices
-                    .iter()
-                    .filter_map(|&idx| self.symbols.get(idx))
-                    .collect()
-            })
+            .map(|indices| indices.iter().filter_map(|&idx| self.symbols.get(idx)).collect())
             .unwrap_or_default()
     }
 
     /// 获取当前作用域的所有符号
     pub fn current_scope_symbols(&self) -> Vec<&Symbol> {
-        self.symbols
-            .iter()
-            .filter(|s| s.scope_depth <= self.current_depth)
-            .collect()
+        self.symbols.iter().filter(|s| s.scope_depth <= self.current_depth).collect()
     }
 
     /// 获取指定作用域深度的所有符号
     pub fn symbols_at_depth(&self, depth: usize) -> Vec<&Symbol> {
-        self.symbols
-            .iter()
-            .filter(|s| s.scope_depth == depth)
-            .collect()
+        self.symbols.iter().filter(|s| s.scope_depth == depth).collect()
     }
 
     /// 获取所有符号
@@ -305,22 +281,14 @@ impl SymbolTable {
 
     /// 根据位置查找所在作用域
     pub fn find_scope_at(&self, offset: usize) -> Option<&Scope> {
-        self.scopes
-            .iter()
-            .filter(|s| s.contains(offset))
-            .max_by_key(|s| s.depth)
+        self.scopes.iter().filter(|s| s.contains(offset)).max_by_key(|s| s.depth)
     }
 
     /// 获取指定位置的可见符号
     pub fn visible_symbols_at(&self, offset: usize) -> Vec<&Symbol> {
-        let max_depth = self
-            .find_scope_at(offset)
-            .map_or(0, |s| s.depth);
-        
-        self.symbols
-            .iter()
-            .filter(|s| s.scope_depth <= max_depth)
-            .collect()
+        let max_depth = self.find_scope_at(offset).map_or(0, |s| s.depth);
+
+        self.symbols.iter().filter(|s| s.scope_depth <= max_depth).collect()
     }
 
     /// 查找类或接口的成员
@@ -328,11 +296,8 @@ impl SymbolTable {
         self.symbols
             .iter()
             .filter(|s| {
-                matches!(s.kind, SymbolKind::Property | SymbolKind::Method)
-                    && s.type_annotation.as_deref() == Some(type_name)
+                matches!(s.kind, SymbolKind::Property | SymbolKind::Method) && s.type_annotation.as_deref() == Some(type_name)
             })
             .collect()
     }
 }
-
-

@@ -11,7 +11,12 @@ use oak_lsp::{
 };
 use oak_vfs::{MemoryVfs, Vfs};
 use rayon::prelude::*;
-use std::{borrow::Cow, collections::{HashMap, HashSet}, sync::{Mutex, RwLock, Arc}, thread};
+use std::{
+    borrow::Cow,
+    collections::{HashMap, HashSet},
+    sync::{Arc, Mutex, RwLock},
+    thread,
+};
 
 pub mod completion;
 pub mod diagnostics;
@@ -77,50 +82,52 @@ impl TypeScriptLanguageService {
         documents.insert(uri.clone(), content.clone());
         // Also update VFS
         self.vfs.write_file(&uri, content);
-        
+
         // 标记整个文件为已修改，以便进行全面诊断
         let mut changes = self.document_changes.write().unwrap();
         changes.insert(uri.clone(), None);
-        
+
         // 清除相关缓存
         self.clear_caches(&uri);
     }
-    
+
     /// Clear caches for a document
     fn clear_caches(&self, uri: &str) {
         // 清除诊断缓存
         let mut diagnostic_cache = self.diagnostic_cache.lock().unwrap();
         diagnostic_cache.remove(uri);
-        
+
         // 清除格式化缓存
         let mut format_cache = self.format_cache.lock().unwrap();
         format_cache.retain(|(cached_uri, _), _| cached_uri != uri);
-        
+
         // 清除补全缓存
         let mut completion_cache = self.completion_cache.lock().unwrap();
         completion_cache.retain(|(cached_uri, _, _), _| cached_uri != uri);
     }
-    
+
     /// Set document content with change range
     fn set_document_with_change(&self, uri: String, content: String, change_range: Range<usize>) {
         let mut documents = self.documents.write().unwrap();
         documents.insert(uri.clone(), content.clone());
         // Also update VFS
         self.vfs.write_file(&uri, content);
-        
+
         // 记录修改范围，用于增量诊断
         let mut changes = self.document_changes.write().unwrap();
         changes.insert(uri.clone(), Some(change_range));
-        
+
         // 清除相关缓存
         self.clear_caches(&uri);
     }
 
     /// Calculate hash for content
     fn calculate_hash(&self, content: &str) -> u64 {
-        use std::collections::hash_map::DefaultHasher;
-        use std::hash::{Hash, Hasher};
-        
+        use std::{
+            collections::hash_map::DefaultHasher,
+            hash::{Hash, Hasher},
+        };
+
         let mut hasher = DefaultHasher::new();
         content.hash(&mut hasher);
         hasher.finish()
@@ -129,7 +136,7 @@ impl TypeScriptLanguageService {
     /// Update symbol table for a document (only if content has changed)
     fn update_symbol_table(&self, uri: &str, content: &str) {
         let current_hash = self.calculate_hash(content);
-        
+
         // Check if content has changed (read-only operation)
         {
             let hashes = self.document_hashes.read().unwrap();
@@ -140,19 +147,19 @@ impl TypeScriptLanguageService {
                 }
             }
         }
-        
+
         // Get change range for incremental update
         let change_range = {
             let changes = self.document_changes.read().unwrap();
             changes.get(uri).cloned().unwrap_or(None)
         };
-        
+
         // Content has changed, update symbol table
         let mut collector = SymbolCollector::new();
         if !uri.is_empty() {
             collector = collector.with_uri(uri.to_string());
         }
-        
+
         // Use incremental collection if possible
         match change_range {
             Some(range) => {
@@ -164,11 +171,11 @@ impl TypeScriptLanguageService {
                 collector.collect(content);
             }
         }
-        
+
         // Write operations
         let mut tables = self.symbol_tables.write().unwrap();
         tables.insert(uri.to_string(), collector.symbol_table().clone());
-        
+
         let mut hashes = self.document_hashes.write().unwrap();
         hashes.insert(uri.to_string(), current_hash);
     }
@@ -188,7 +195,7 @@ impl TypeScriptLanguageService {
     /// Parse member access expression (e.g., obj.property)
     fn parse_member_access(&self, text: &str, offset: usize) -> Option<String> {
         let before_cursor = &text[..offset];
-        
+
         if let Some(dot_pos) = before_cursor.rfind('.') {
             let before_dot = &before_cursor[..dot_pos];
             let identifier = self.extract_identifier_before(before_dot)?;
@@ -200,35 +207,33 @@ impl TypeScriptLanguageService {
     /// Extract identifier before a position
     fn extract_identifier_before(&self, text: &str) -> Option<String> {
         let mut end = text.len();
-        
+
         while end > 0 {
             let ch = text.chars().nth(end - 1)?;
             if ch.is_whitespace() {
                 end -= 1;
-            } else {
+            }
+            else {
                 break;
             }
         }
-        
+
         if end == 0 {
             return None;
         }
-        
+
         let mut start = end;
         while start > 0 {
             let ch = text.chars().nth(start - 1)?;
             if ch.is_alphanumeric() || ch == '_' || ch == '$' {
                 start -= 1;
-            } else {
+            }
+            else {
                 break;
             }
         }
-        
-        if start < end {
-            Some(text[start..end].to_string())
-        } else {
-            None
-        }
+
+        if start < end { Some(text[start..end].to_string()) } else { None }
     }
 
     /// Check if cursor is after a dot (member access)
@@ -236,7 +241,7 @@ impl TypeScriptLanguageService {
         if offset == 0 {
             return false;
         }
-        
+
         let before_cursor = &text[..offset];
         let trimmed = before_cursor.trim_end();
         trimmed.ends_with('.')
@@ -245,15 +250,15 @@ impl TypeScriptLanguageService {
     /// Check if cursor is in an object literal context (e.g., { | })
     fn is_object_literal_context(&self, text: &str, offset: usize) -> bool {
         let before_cursor = &text[..offset];
-        
+
         // Check if there's an opening brace without a closing brace
         let open_braces = before_cursor.chars().filter(|&c| c == '{').count();
         let close_braces = before_cursor.chars().filter(|&c| c == '}').count();
-        
+
         if open_braces <= close_braces {
             return false;
         }
-        
+
         // Check if we're after a comma or opening brace
         let trimmed = before_cursor.trim_end();
         trimmed.ends_with('{') || trimmed.ends_with(',')
@@ -262,16 +267,17 @@ impl TypeScriptLanguageService {
     /// Check if cursor is in a type annotation context (e.g., let x: |)
     fn is_type_annotation_context(&self, text: &str, offset: usize) -> bool {
         let before_cursor = &text[..offset];
-        
+
         // Look for a colon before the cursor
         if let Some(colon_pos) = before_cursor.rfind(':') {
             // Check if there's no semicolon or assignment after the colon
             let after_colon = &before_cursor[colon_pos + 1..];
             let trimmed = after_colon.trim();
-            
+
             // Check if we're not in a string or comment
             !self.is_in_string_or_comment(text, offset) && trimmed.is_empty()
-        } else {
+        }
+        else {
             false
         }
     }
@@ -279,15 +285,15 @@ impl TypeScriptLanguageService {
     /// Check if cursor is in a function parameter context (e.g., function f(|))
     fn is_function_parameter_context(&self, text: &str, offset: usize) -> bool {
         let before_cursor = &text[..offset];
-        
+
         // Look for an opening parenthesis without a closing parenthesis
         let open_parens = before_cursor.chars().filter(|&c| c == '(').count();
         let close_parens = before_cursor.chars().filter(|&c| c == ')').count();
-        
+
         if open_parens <= close_parens {
             return false;
         }
-        
+
         // Check if the last opening parenthesis is part of a function definition
         let mut paren_count = 0;
         for (i, c) in before_cursor.char_indices().rev() {
@@ -300,13 +306,16 @@ impl TypeScriptLanguageService {
                         let before_paren = &before_cursor[..i];
                         let trimmed = before_paren.trim_end();
                         // Check if it's part of a function definition
-                        return trimmed.ends_with("function") || trimmed.ends_with("=>") || trimmed.ends_with("=") || trimmed.ends_with(",");
+                        return trimmed.ends_with("function")
+                            || trimmed.ends_with("=>")
+                            || trimmed.ends_with("=")
+                            || trimmed.ends_with(",");
                     }
-                },
+                }
                 _ => {}
             }
         }
-        
+
         false
     }
 
@@ -316,37 +325,42 @@ impl TypeScriptLanguageService {
         let mut in_string = false;
         let mut in_comment = false;
         let mut string_delimiter = '"';
-        
+
         for (i, c) in text.char_indices() {
             if i >= offset {
                 break;
             }
-            
+
             if !in_comment && !in_string && c == '/' {
                 // Check for comment
                 if let Some(next) = text.chars().nth(i + 1) {
                     if next == '/' {
                         in_comment = true;
-                    } else if next == '*' {
+                    }
+                    else if next == '*' {
                         in_comment = true;
                     }
                 }
-            } else if in_comment && c == '*' {
+            }
+            else if in_comment && c == '*' {
                 // Check for end of multi-line comment
                 if let Some(next) = text.chars().nth(i + 1) {
                     if next == '/' {
                         in_comment = false;
                     }
                 }
-            } else if in_comment && c == '\n' {
+            }
+            else if in_comment && c == '\n' {
                 // End of single-line comment
                 in_comment = false;
-            } else if !in_comment && (c == '"' || c == '\'') {
+            }
+            else if !in_comment && (c == '"' || c == '\'') {
                 // Check for string
                 if !in_string {
                     in_string = true;
                     string_delimiter = c;
-                } else if c == string_delimiter {
+                }
+                else if c == string_delimiter {
                     // Check if not escaped
                     let mut escaped = false;
                     let mut j = i - 1;
@@ -354,7 +368,8 @@ impl TypeScriptLanguageService {
                         if let Some(ch) = text.chars().nth(j) {
                             if ch == '\\' {
                                 escaped = !escaped;
-                            } else {
+                            }
+                            else {
                                 break;
                             }
                         }
@@ -366,14 +381,14 @@ impl TypeScriptLanguageService {
                 }
             }
         }
-        
+
         in_string || in_comment
     }
 
     /// Convert symbol kind to completion item kind
     fn symbol_kind_to_completion_kind(&self, kind: SymbolKind) -> oak_lsp::types::CompletionItemKind {
         use oak_lsp::types::CompletionItemKind;
-        
+
         match kind {
             SymbolKind::Variable => CompletionItemKind::Variable,
             SymbolKind::Function => CompletionItemKind::Function,
@@ -393,13 +408,66 @@ impl TypeScriptLanguageService {
     /// Add keyword completions
     fn add_keyword_completions(&self, completions: &mut Vec<CompletionItem>) {
         let keywords = [
-            "abstract", "any", "as", "async", "await", "boolean", "break", "case", "catch",
-            "class", "const", "continue", "debugger", "default", "delete", "do", "else", "enum",
-            "export", "extends", "false", "finally", "for", "function", "if", "implements",
-            "import", "in", "infer", "interface", "let", "module", "namespace", "never", "new",
-            "null", "number", "object", "package", "private", "protected", "public", "readonly",
-            "require", "return", "static", "string", "super", "switch", "this", "throw", "true",
-            "try", "type", "typeof", "var", "void", "while", "with", "yield",
+            "abstract",
+            "any",
+            "as",
+            "async",
+            "await",
+            "boolean",
+            "break",
+            "case",
+            "catch",
+            "class",
+            "const",
+            "continue",
+            "debugger",
+            "default",
+            "delete",
+            "do",
+            "else",
+            "enum",
+            "export",
+            "extends",
+            "false",
+            "finally",
+            "for",
+            "function",
+            "if",
+            "implements",
+            "import",
+            "in",
+            "infer",
+            "interface",
+            "let",
+            "module",
+            "namespace",
+            "never",
+            "new",
+            "null",
+            "number",
+            "object",
+            "package",
+            "private",
+            "protected",
+            "public",
+            "readonly",
+            "require",
+            "return",
+            "static",
+            "string",
+            "super",
+            "switch",
+            "this",
+            "throw",
+            "true",
+            "try",
+            "type",
+            "typeof",
+            "var",
+            "void",
+            "while",
+            "with",
+            "yield",
         ];
 
         for keyword in keywords {
@@ -423,7 +491,7 @@ impl TypeScriptLanguageService {
                     let members = self.get_type_members(type_name, &table);
                     for member in members {
                         let kind = self.symbol_kind_to_completion_kind(member.kind);
-                        
+
                         completions.push(CompletionItem {
                             label: member.name.clone(),
                             kind: Some(kind),
@@ -461,37 +529,80 @@ impl TypeScriptLanguageService {
     /// Add built-in properties for common types
     fn add_builtin_properties(&self, type_name: &str, completions: &mut Vec<CompletionItem>) {
         let string_methods = [
-            "charAt", "charCodeAt", "concat", "endsWith", "includes", "indexOf",
-            "lastIndexOf", "length", "localeCompare", "match", "padEnd", "padStart",
-            "repeat", "replace", "replaceAll", "search", "slice", "split", "startsWith",
-            "substring", "toLowerCase", "toUpperCase", "trim", "trimStart", "trimEnd",
+            "charAt",
+            "charCodeAt",
+            "concat",
+            "endsWith",
+            "includes",
+            "indexOf",
+            "lastIndexOf",
+            "length",
+            "localeCompare",
+            "match",
+            "padEnd",
+            "padStart",
+            "repeat",
+            "replace",
+            "replaceAll",
+            "search",
+            "slice",
+            "split",
+            "startsWith",
+            "substring",
+            "toLowerCase",
+            "toUpperCase",
+            "trim",
+            "trimStart",
+            "trimEnd",
         ];
 
-        let number_methods = [
-            "toExponential", "toFixed", "toLocaleString", "toPrecision", "toString",
-        ];
+        let number_methods = ["toExponential", "toFixed", "toLocaleString", "toPrecision", "toString"];
 
         let array_methods = [
-            "concat", "every", "fill", "filter", "find", "findIndex", "flat", "flatMap",
-            "forEach", "includes", "indexOf", "join", "lastIndexOf", "length", "map",
-            "pop", "push", "reduce", "reduceRight", "reverse", "shift", "slice",
-            "some", "sort", "splice", "unshift",
+            "concat",
+            "every",
+            "fill",
+            "filter",
+            "find",
+            "findIndex",
+            "flat",
+            "flatMap",
+            "forEach",
+            "includes",
+            "indexOf",
+            "join",
+            "lastIndexOf",
+            "length",
+            "map",
+            "pop",
+            "push",
+            "reduce",
+            "reduceRight",
+            "reverse",
+            "shift",
+            "slice",
+            "some",
+            "sort",
+            "splice",
+            "unshift",
         ];
 
-        let object_methods = [
-            "hasOwnProperty", "isPrototypeOf", "propertyIsEnumerable",
-            "toLocaleString", "toString", "valueOf",
-        ];
+        let object_methods =
+            ["hasOwnProperty", "isPrototypeOf", "propertyIsEnumerable", "toLocaleString", "toString", "valueOf"];
 
         let methods = if type_name == "string" || type_name == "String" {
             Some(&string_methods[..])
-        } else if type_name == "number" || type_name == "Number" {
+        }
+        else if type_name == "number" || type_name == "Number" {
             Some(&number_methods[..])
-        } else if type_name.ends_with("[]") || type_name == "Array" {
+        }
+        else if type_name.ends_with("[]") || type_name == "Array" {
             Some(&array_methods[..])
-        } else if type_name == "object" || type_name == "Object" {
+        }
+        else if type_name == "object" || type_name == "Object" {
             Some(&object_methods[..])
-        } else {
+        }
+        else {
             None
         };
 
@@ -524,7 +635,8 @@ impl TypeScriptLanguageService {
             let ch = chars[start - 1];
             if ch.is_alphanumeric() || ch == '_' || ch == '$' {
                 start -= 1;
-            } else {
+            }
+            else {
                 break;
             }
         }
@@ -534,72 +646,61 @@ impl TypeScriptLanguageService {
             let ch = chars[end];
             if ch.is_alphanumeric() || ch == '_' || ch == '$' {
                 end += 1;
-            } else {
+            }
+            else {
                 break;
             }
         }
 
-        if start < end {
-            Some(chars[start..end].iter().collect())
-        } else {
-            None
-        }
+        if start < end { Some(chars[start..end].iter().collect()) } else { None }
     }
 
     /// Get offset from line and column
     pub fn get_offset(&self, text: &str, line: usize, column: usize) -> usize {
         // Precompute line offsets for faster lookup
-        let line_offsets: Vec<usize> = text.char_indices()
-            .filter(|&(_, c)| c == '\n')
-            .map(|(i, _)| i + 1)
-            .collect();
-        
+        let line_offsets: Vec<usize> = text.char_indices().filter(|&(_, c)| c == '\n').map(|(i, _)| i + 1).collect();
+
         // Calculate offset for the given line
         let line_start = if line == 0 {
             0
-        } else if line <= line_offsets.len() {
+        }
+        else if line <= line_offsets.len() {
             line_offsets[line - 1]
-        } else {
+        }
+        else {
             return text.len();
         };
-        
+
         // Calculate column offset
         let mut current_offset = line_start;
         let mut current_col = 0;
-        
+
         for (i, c) in text[line_start..].char_indices() {
             if current_col >= column {
                 return line_start + i;
             }
             current_col += 1;
         }
-        
+
         text.len()
     }
 
     /// Get line and column from offset
     pub fn get_line_and_column(&self, text: &str, offset: usize) -> (usize, usize) {
         // Precompute line offsets for faster lookup
-        let line_offsets: Vec<usize> = text.char_indices()
-            .filter(|&(_, c)| c == '\n')
-            .map(|(i, _)| i + 1)
-            .collect();
-        
+        let line_offsets: Vec<usize> = text.char_indices().filter(|&(_, c)| c == '\n').map(|(i, _)| i + 1).collect();
+
         // Find the line containing the offset
         let line = line_offsets.iter().filter(|&&o| o <= offset).count();
-        
+
         // Calculate column
-        let line_start = if line == 0 {
-            0
-        } else {
-            line_offsets[line - 1]
-        };
-        
+        let line_start = if line == 0 { 0 } else { line_offsets[line - 1] };
+
         let mut col = 0;
         for (i, c) in text[line_start..offset].char_indices() {
             col += 1;
         }
-        
+
         (line, col)
     }
 
@@ -714,18 +815,21 @@ impl TypeScriptLanguageService {
     /// Calculate relevance score for a completion item
     fn calculate_relevance(&self, item: &CompletionItem, prefix: &str) -> f64 {
         let label = item.label.as_str();
-        
+
         // Base score based on prefix match
         let mut score = if label.starts_with(prefix) {
             1.0
-        } else if label.contains(prefix) {
+        }
+        else if label.contains(prefix) {
             0.7
-        } else if self.fuzzy_match(label, prefix) {
+        }
+        else if self.fuzzy_match(label, prefix) {
             0.5
-        } else {
+        }
+        else {
             0.3
         };
-        
+
         // Adjust score based on item kind
         if let Some(kind) = item.kind {
             match kind {
@@ -735,13 +839,13 @@ impl TypeScriptLanguageService {
                 _ => {}
             }
         }
-        
+
         // Adjust score based on usage frequency
         let usage = self.completion_usage.lock().unwrap();
         if let Some(freq) = usage.get(label) {
             score += (*freq as f64) * 0.01;
         }
-        
+
         score
     }
 
@@ -751,16 +855,16 @@ impl TypeScriptLanguageService {
         if prefix.is_empty() {
             return true;
         }
-        
+
         let mut label_iter = label.chars();
-        
+
         for prefix_char in prefix.chars() {
             match label_iter.find(|&c| c.eq_ignore_ascii_case(&prefix_char)) {
                 Some(_) => continue,
                 None => return false,
             }
         }
-        
+
         true
     }
 
@@ -777,15 +881,16 @@ impl TypeScriptLanguageService {
     fn extract_completion_prefix(&self, text: &str, offset: usize) -> String {
         let before_cursor = &text[..offset];
         let mut prefix = String::new();
-        
+
         for c in before_cursor.chars().rev() {
             if c.is_alphanumeric() || c == '_' || c == '$' {
                 prefix.insert(0, c);
-            } else {
+            }
+            else {
                 break;
             }
         }
-        
+
         prefix
     }
 }
@@ -899,7 +1004,7 @@ impl LanguageService for TypeScriptLanguageService {
     ) -> impl std::future::Future<Output = Vec<CompletionItem>> + Send + 'a {
         async move {
             let _span = tracing::span!(tracing::Level::DEBUG, "completion", uri = uri, offset = offset).entered();
-            
+
             let content = match self.get_document(uri).or_else(|| self.get_file_content(uri)) {
                 Some(c) => c,
                 None => return vec![],
@@ -909,7 +1014,7 @@ impl LanguageService for TypeScriptLanguageService {
 
             // 提取补全前缀
             let prefix = self.extract_completion_prefix(&content, offset);
-            
+
             // 检查缓存
             let cache_key = (uri.to_string(), offset, prefix.clone());
             {
@@ -925,7 +1030,7 @@ impl LanguageService for TypeScriptLanguageService {
             if self.is_member_access_context(&content, offset) {
                 if let Some(object_name) = self.parse_member_access(&content, offset) {
                     let member_completions = self.get_member_completions(&object_name, uri);
-                    
+
                     // 缓存结果
                     let mut cache = self.completion_cache.lock().unwrap();
                     cache.insert(cache_key, member_completions.clone());
@@ -937,21 +1042,23 @@ impl LanguageService for TypeScriptLanguageService {
                 for symbol in table.current_scope_symbols() {
                     let kind = self.symbol_kind_to_completion_kind(symbol.kind);
                     let mut detail = String::new();
-                    
+
                     if let Some(ref type_ann) = symbol.type_annotation {
                         detail = format!(": {}", type_ann);
                     }
-                    
+
                     let insert_text = if symbol.kind == SymbolKind::Function {
                         if let Some(ref sig) = symbol.signature {
                             Some(format!("{}{}", symbol.name, sig))
-                        } else {
+                        }
+                        else {
                             Some(format!("{}()", symbol.name))
                         }
-                    } else {
+                    }
+                    else {
                         Some(symbol.name.clone())
                     };
-                    
+
                     completions.push(CompletionItem {
                         label: symbol.name.clone(),
                         kind: Some(kind),
@@ -968,7 +1075,13 @@ impl LanguageService for TypeScriptLanguageService {
             let mut cache = self.completion_cache.lock().unwrap();
             cache.insert(cache_key, completions.clone());
 
-            tracing::debug!("Completion generated {} items for uri: {}, offset: {}, prefix: {}", completions.len(), uri, offset, prefix);
+            tracing::debug!(
+                "Completion generated {} items for uri: {}, offset: {}, prefix: {}",
+                completions.len(),
+                uri,
+                offset,
+                prefix
+            );
             completions
         }
     }
@@ -994,10 +1107,7 @@ impl LanguageService for TypeScriptLanguageService {
             /// 首先尝试从当前文件的符号表获取定义位置
             if let Some(symbol_table) = self.get_symbol_table(uri) {
                 if let Some(symbol) = symbol_table.find_by_name(&symbol_name) {
-                    locations.push(LocationRange {
-                        uri: Arc::from(uri),
-                        range: symbol.range.clone(),
-                    });
+                    locations.push(LocationRange { uri: Arc::from(uri), range: symbol.range.clone() });
                     return locations;
                 }
             }
@@ -1008,13 +1118,10 @@ impl LanguageService for TypeScriptLanguageService {
                 if other_uri == uri {
                     continue;
                 }
-                
+
                 if let Some(symbol_table) = self.get_symbol_table(&other_uri) {
                     if let Some(symbol) = symbol_table.find_by_name(&symbol_name) {
-                        locations.push(LocationRange {
-                            uri: Arc::from(other_uri),
-                            range: symbol.range.clone(),
-                        });
+                        locations.push(LocationRange { uri: Arc::from(other_uri), range: symbol.range.clone() });
                         return locations;
                     }
                 }
@@ -1026,13 +1133,7 @@ impl LanguageService for TypeScriptLanguageService {
                 if self.is_definition_line(line, &symbol_name) {
                     let line_offset = self.get_offset(&content, line_idx, 0);
                     let line_end = self.get_offset(&content, line_idx, line.len());
-                    locations.push(LocationRange {
-                        uri: Arc::from(uri),
-                        range: Range {
-                            start: line_offset,
-                            end: line_end,
-                        },
-                    });
+                    locations.push(LocationRange { uri: Arc::from(uri), range: Range { start: line_offset, end: line_end } });
                     break;
                 }
             }
@@ -1044,7 +1145,7 @@ impl LanguageService for TypeScriptLanguageService {
     /// 检查行是否是符号的定义行
     fn is_definition_line(&self, line: &str, symbol_name: &str) -> bool {
         let trimmed = line.trim();
-        
+
         // 检查常见的定义模式
         let definition_patterns = [
             format!("const {}", symbol_name),
@@ -1071,10 +1172,7 @@ impl LanguageService for TypeScriptLanguageService {
         }
 
         // 检查属性定义模式
-        let property_patterns = [
-            format!("{}:", symbol_name),
-            format!("{} =", symbol_name),
-        ];
+        let property_patterns = [format!("{}:", symbol_name), format!("{} =", symbol_name)];
 
         property_patterns.iter().any(|p| trimmed.contains(p))
     }
@@ -1103,16 +1201,20 @@ impl LanguageService for TypeScriptLanguageService {
             /// 2. 然后在所有其他文件中查找引用（并行处理）
             let all_uris = self.get_all_document_uris();
             let other_uris: Vec<String> = all_uris.into_iter().filter(|u| u != uri).collect();
-            
+
             // 并行处理其他文件
-            let other_references: Vec<LocationRange> = other_uris.par_iter().flat_map(|other_uri| {
-                if let Some(other_content) = self.get_document(other_uri).or_else(|| self.get_file_content(other_uri)) {
-                    self.find_references_in_file(other_uri, &other_content, &symbol_name)
-                } else {
-                    vec![]
-                }
-            }).collect();
-            
+            let other_references: Vec<LocationRange> = other_uris
+                .par_iter()
+                .flat_map(|other_uri| {
+                    if let Some(other_content) = self.get_document(other_uri).or_else(|| self.get_file_content(other_uri)) {
+                        self.find_references_in_file(other_uri, &other_content, &symbol_name)
+                    }
+                    else {
+                        vec![]
+                    }
+                })
+                .collect();
+
             references.extend(other_references);
 
             references
@@ -1127,10 +1229,7 @@ impl LanguageService for TypeScriptLanguageService {
         /// 首先尝试使用符号表来查找引用
         if let Some(symbol_table) = self.get_symbol_table(uri) {
             for symbol in symbol_table.find_all_by_name(symbol_name) {
-                let location = LocationRange {
-                    uri: Arc::from(uri),
-                    range: symbol.range.clone(),
-                };
+                let location = LocationRange { uri: Arc::from(uri), range: symbol.range.clone() };
                 let key = (uri, symbol.range.start, symbol.range.end);
                 if reference_set.insert(key) {
                     references.push(location);
@@ -1152,13 +1251,8 @@ impl LanguageService for TypeScriptLanguageService {
                     /// 检查是否已经添加过这个引用
                     let key = (uri, start_offset, end_offset);
                     if reference_set.insert(key) {
-                        references.push(LocationRange {
-                            uri: Arc::from(uri),
-                            range: Range {
-                                start: start_offset,
-                                end: end_offset,
-                            },
-                        });
+                        references
+                            .push(LocationRange { uri: Arc::from(uri), range: Range { start: start_offset, end: end_offset } });
                     }
                 }
 
@@ -1271,7 +1365,8 @@ impl LanguageService for TypeScriptLanguageService {
                     if *cached != content {
                         let end_offset = content.len();
                         return vec![TextEdit { range: Range { start: 0, end: end_offset }, new_text: cached.clone() }];
-                    } else {
+                    }
+                    else {
                         return vec![];
                     }
                 }
@@ -1365,13 +1460,54 @@ impl LanguageService for TypeScriptLanguageService {
 
                 /// 检测关键字
                 let keywords = [
-                    "const", "let", "var", "function", "class", "interface", "type",
-                    "enum", "import", "export", "from", "return", "if", "else",
-                    "for", "while", "switch", "case", "break", "continue", "try",
-                    "catch", "finally", "throw", "new", "this", "super", "extends",
-                    "implements", "static", "public", "private", "protected", "readonly",
-                    "abstract", "async", "await", "yield", "typeof", "instanceof",
-                    "in", "of", "as", "is", "keyof", "typeof", "infer", "never",
+                    "const",
+                    "let",
+                    "var",
+                    "function",
+                    "class",
+                    "interface",
+                    "type",
+                    "enum",
+                    "import",
+                    "export",
+                    "from",
+                    "return",
+                    "if",
+                    "else",
+                    "for",
+                    "while",
+                    "switch",
+                    "case",
+                    "break",
+                    "continue",
+                    "try",
+                    "catch",
+                    "finally",
+                    "throw",
+                    "new",
+                    "this",
+                    "super",
+                    "extends",
+                    "implements",
+                    "static",
+                    "public",
+                    "private",
+                    "protected",
+                    "readonly",
+                    "abstract",
+                    "async",
+                    "await",
+                    "yield",
+                    "typeof",
+                    "instanceof",
+                    "in",
+                    "of",
+                    "as",
+                    "is",
+                    "keyof",
+                    "typeof",
+                    "infer",
+                    "never",
                 ];
 
                 for keyword in &keywords {
@@ -1382,10 +1518,9 @@ impl LanguageService for TypeScriptLanguageService {
 
                         /// 检查是否是完整的单词
                         let is_word_boundary = |c: char| !c.is_alphanumeric() && c != '_' && c != '$';
-                        let prev_ok = actual_pos == 0 ||
-                            line.chars().nth(actual_pos.saturating_sub(1)).map(is_word_boundary).unwrap_or(true);
-                        let next_ok = end_pos >= line.len() ||
-                            line.chars().nth(end_pos).map(is_word_boundary).unwrap_or(true);
+                        let prev_ok = actual_pos == 0
+                            || line.chars().nth(actual_pos.saturating_sub(1)).map(is_word_boundary).unwrap_or(true);
+                        let next_ok = end_pos >= line.len() || line.chars().nth(end_pos).map(is_word_boundary).unwrap_or(true);
 
                         if prev_ok && next_ok {
                             // 添加 token (line, start_char, length, token_type, token_modifiers)
@@ -1434,9 +1569,7 @@ impl LanguageService for TypeScriptLanguageService {
                         position,
                         label: oak_lsp::types::InlayHintLabel::String(hint.label),
                         kind: Some(match hint.kind {
-                            crate::lsp::inlay_hints::InlayHintKind::ParameterName => {
-                                oak_lsp::types::InlayHintKind::Parameter
-                            }
+                            crate::lsp::inlay_hints::InlayHintKind::ParameterName => oak_lsp::types::InlayHintKind::Parameter,
                             _ => oak_lsp::types::InlayHintKind::Type,
                         }),
                         text_edits: None,
@@ -1532,14 +1665,8 @@ impl LanguageService for TypeScriptLanguageService {
 
                     Diagnostic {
                         range: oak_lsp::types::Range {
-                            start: oak_lsp::types::Position {
-                                line: start_line as u32,
-                                character: start_col as u32,
-                            },
-                            end: oak_lsp::types::Position {
-                                line: end_line as u32,
-                                character: end_col as u32,
-                            },
+                            start: oak_lsp::types::Position { line: start_line as u32, character: start_col as u32 },
+                            end: oak_lsp::types::Position { line: end_line as u32, character: end_col as u32 },
                         },
                         severity: Some(match d.level {
                             DiagnosticLevel::Error => oak_lsp::types::DiagnosticSeverity::Error,
@@ -1567,10 +1694,7 @@ impl LanguageService for TypeScriptLanguageService {
     /// 将偏移量转换为位置
     fn offset_to_position(&self, content: &str, offset: usize) -> oak_lsp::types::Position {
         let (line, character) = self.get_line_and_column(content, offset);
-        oak_lsp::types::Position {
-            line: line as u32,
-            character: character as u32,
-        }
+        oak_lsp::types::Position { line: line as u32, character: character as u32 }
     }
 }
 

@@ -5,8 +5,8 @@
 pub mod syntax_checker;
 pub mod type_checker;
 
-use core::range::Range;
 use crate::lsp::symbols::{SymbolKind, SymbolTable};
+use core::range::Range;
 
 /// 诊断等级
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -40,19 +40,8 @@ pub struct Diagnostic {
 
 impl Diagnostic {
     /// 创建新的诊断信息
-    pub fn new(
-        level: DiagnosticLevel,
-        message: impl Into<String>,
-        range: Range<usize>,
-    ) -> Self {
-        Self {
-            level,
-            message: message.into(),
-            range,
-            code: None,
-            source: "rusty-typescript".to_string(),
-            fix: None,
-        }
+    pub fn new(level: DiagnosticLevel, message: impl Into<String>, range: Range<usize>) -> Self {
+        Self { level, message: message.into(), range, code: None, source: "rusty-typescript".to_string(), fix: None }
     }
 
     /// 设置错误代码
@@ -136,9 +125,7 @@ impl DiagnosticAnalyzer {
 
         // 如果有修改范围，过滤出只在修改范围内的诊断
         if let Some(range) = change_range {
-            diagnostics.retain(|d| {
-                d.range.start >= range.start && d.range.end <= range.end
-            });
+            diagnostics.retain(|d| d.range.start >= range.start && d.range.end <= range.end);
         }
 
         diagnostics
@@ -156,9 +143,7 @@ impl DiagnosticAnalyzer {
 
         // 如果有修改范围，过滤出只在修改范围内的诊断
         if let Some(range) = change_range {
-            diagnostics.retain(|d| {
-                d.range.start >= range.start && d.range.end <= range.end
-            });
+            diagnostics.retain(|d| d.range.start >= range.start && d.range.end <= range.end);
         }
 
         diagnostics
@@ -182,7 +167,8 @@ impl DiagnosticAnalyzer {
                         let message = format!("'{}' 已声明但未使用", symbol.name);
                         diagnostics.push(Diagnostic::warning(message, symbol.range.clone()));
                     }
-                } else {
+                }
+                else {
                     let message = format!("'{}' 已声明但未使用", symbol.name);
                     diagnostics.push(Diagnostic::warning(message, symbol.range.clone()));
                 }
@@ -194,7 +180,8 @@ impl DiagnosticAnalyzer {
 
     /// 检查符号是否被使用
     fn is_symbol_used(&self, content: &str, symbol_name: &str) -> bool {
-        let declaration_pattern = format!("(const|let|var|function|class|interface|type|enum)\\s+{}", regex_escape(symbol_name));
+        let declaration_pattern =
+            format!("(const|let|var|function|class|interface|type|enum)\\s+{}", regex_escape(symbol_name));
 
         let mut found_declaration = false;
         let mut usage_count = 0;
@@ -247,8 +234,7 @@ impl DiagnosticAnalyzer {
         }
 
         /// 跳过纯字符串行
-        if (trimmed.starts_with('"') || trimmed.starts_with('\'')) &&
-           (trimmed.ends_with('"') || trimmed.ends_with('\'')) {
+        if (trimmed.starts_with('"') || trimmed.starts_with('\'')) && (trimmed.ends_with('"') || trimmed.ends_with('\'')) {
             return false;
         }
 
@@ -272,11 +258,8 @@ impl DiagnosticAnalyzer {
 fn regex_escape(s: &str) -> String {
     s.chars()
         .map(|c| match c {
-            '\\' | '.' | '+' | '*' | '?' | '(' | ')' | '|' | '[' | ']' | '{' | '}' | '^' | '$' | '#' =>
-                format!("\\{}", c),
+            '\\' | '.' | '+' | '*' | '?' | '(' | ')' | '|' | '[' | ']' | '{' | '}' | '^' | '$' | '#' => format!("\\{}", c),
             _ => c.to_string(),
         })
         .collect()
 }
-
-

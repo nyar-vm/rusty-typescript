@@ -2,8 +2,8 @@
 //!
 //! 提供代码中的内联提示功能，如参数名称提示、类型推断提示等。
 
-use core::range::Range;
 use crate::lsp::symbols::{SymbolKind, SymbolTable};
+use core::range::Range;
 
 /// 内联提示类型
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -33,17 +33,8 @@ pub struct InlayHint {
 
 impl InlayHint {
     /// 创建新的内联提示
-    pub fn new(
-        position: usize,
-        label: impl Into<String>,
-        kind: InlayHintKind,
-    ) -> Self {
-        Self {
-            position,
-            label: label.into(),
-            kind,
-            tooltip: None,
-        }
+    pub fn new(position: usize, label: impl Into<String>, kind: InlayHintKind) -> Self {
+        Self { position, label: label.into(), kind, tooltip: None }
     }
 
     /// 设置工具提示
@@ -141,8 +132,9 @@ impl InlayHintProvider {
             let line_offset = self.get_line_offset(content, line_idx);
 
             /// 检测使用类型推断的变量声明（没有显式类型注解）
-            if (line.trim().starts_with("const ") || line.trim().starts_with("let ") || line.trim().starts_with("var ")) &&
-               !line.contains(":") {
+            if (line.trim().starts_with("const ") || line.trim().starts_with("let ") || line.trim().starts_with("var "))
+                && !line.contains(":")
+            {
                 /// 提取变量名
                 if let Some(var_name) = self.extract_variable_name(line) {
                     /// 查找符号表中的类型信息
@@ -206,7 +198,8 @@ impl InlayHintProvider {
                             }
                         }
                     }
-                } else {
+                }
+                else {
                     /// 如果有显式值，解析并更新 enum_value
                     if let Some(eq_pos) = trimmed.find('=') {
                         let value_str = &trimmed[eq_pos + 1..].trim();
@@ -238,7 +231,8 @@ impl InlayHintProvider {
                         if let Some(colon_pos) = param.find(':') {
                             let param_name = param[..colon_pos].trim();
                             params.push(param_name.to_string());
-                        } else {
+                        }
+                        else {
                             /// 没有类型注解，整个作为参数名
                             params.push(param.to_string());
                         }
@@ -320,25 +314,21 @@ impl InlayHintProvider {
         /// 移除 const/let/var
         let after_keyword = if trimmed.starts_with("const ") {
             &trimmed[6..]
-        } else if trimmed.starts_with("let ") {
+        }
+        else if trimmed.starts_with("let ") {
             &trimmed[4..]
-        } else if trimmed.starts_with("var ") {
+        }
+        else if trimmed.starts_with("var ") {
             &trimmed[4..]
-        } else {
+        }
+        else {
             return None;
         };
 
         /// 提取变量名（直到空格、等号、冒号等）
-        let name: String = after_keyword
-            .chars()
-            .take_while(|&c| c.is_alphanumeric() || c == '_' || c == '$')
-            .collect();
+        let name: String = after_keyword.chars().take_while(|&c| c.is_alphanumeric() || c == '_' || c == '$').collect();
 
-        if name.is_empty() {
-            None
-        } else {
-            Some(name)
-        }
+        if name.is_empty() { None } else { Some(name) }
     }
 
     /// 获取行偏移量
@@ -353,7 +343,5 @@ impl InlayHintProvider {
         content.len()
     }
 }
-
-
 
 use crate::lsp::symbols::SymbolTable;

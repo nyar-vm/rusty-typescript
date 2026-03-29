@@ -1,5 +1,5 @@
 //! 补全匹配器模块
-//! 
+//!
 //! 提供模糊匹配功能，提高补全的准确性和可用性。
 
 use super::*;
@@ -14,32 +14,35 @@ impl CompletionMatcher {
         if prefix.is_empty() {
             return true;
         }
-        
+
         let mut label_iter = label.chars();
-        
+
         for prefix_char in prefix.chars() {
             match label_iter.find(|&c| c.eq_ignore_ascii_case(&prefix_char)) {
                 Some(_) => continue,
                 None => return false,
             }
         }
-        
+
         true
     }
-    
+
     /// 计算匹配分数
     pub fn calculate_match_score(label: &str, prefix: &str) -> f64 {
         if prefix.is_empty() {
             return 1.0;
         }
-        
+
         if label.starts_with(prefix) {
             1.0
-        } else if label.contains(prefix) {
+        }
+        else if label.contains(prefix) {
             0.7
-        } else if Self::fuzzy_match(label, prefix) {
+        }
+        else if Self::fuzzy_match(label, prefix) {
             0.5
-        } else {
+        }
+        else {
             0.3
         }
     }

@@ -7,8 +7,10 @@ use typescript_tools::compiler::{CompileCache, DependencyGraph};
 
 #[test]
 fn test_calculate_hash() {
-    use std::collections::hash_map::DefaultHasher;
-    use std::hash::{Hash, Hasher};
+    use std::{
+        collections::hash_map::DefaultHasher,
+        hash::{Hash, Hasher},
+    };
 
     fn calculate_hash(content: &str) -> u64 {
         let mut hasher = DefaultHasher::new();

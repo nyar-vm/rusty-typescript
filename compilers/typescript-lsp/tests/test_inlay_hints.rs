@@ -1,4 +1,7 @@
-use typescript_lsp::lsp::inlay_hints::{InlayHint, InlayHintKind, InlayHintProvider}; use typescript_lsp::lsp::symbols::SymbolTable;
+use typescript_lsp::lsp::{
+    inlay_hints::{InlayHint, InlayHintKind, InlayHintProvider},
+    symbols::SymbolTable,
+};
 
 #[test]
 fn test_inlay_hint_creation() {
@@ -30,16 +33,7 @@ fn test_extract_parameter_names() {
 fn test_extract_variable_name() {
     let provider = InlayHintProvider::new(SymbolTable::new());
 
-    assert_eq!(
-        provider.extract_variable_name("const myVar = 123"),
-        Some("myVar".to_string())
-    );
-    assert_eq!(
-        provider.extract_variable_name("let count = 0"),
-        Some("count".to_string())
-    );
-    assert_eq!(
-        provider.extract_variable_name("var _private = true"),
-        Some("_private".to_string())
-    );
+    assert_eq!(provider.extract_variable_name("const myVar = 123"), Some("myVar".to_string()));
+    assert_eq!(provider.extract_variable_name("let count = 0"), Some("count".to_string()));
+    assert_eq!(provider.extract_variable_name("var _private = true"), Some("_private".to_string()));
 }

@@ -2,9 +2,9 @@
 //!
 //! 检测类型错误，如类型不匹配、函数参数错误等。
 
-use core::range::Range;
-use crate::lsp::symbols::{SymbolKind, SymbolTable};
 use super::Diagnostic;
+use crate::lsp::symbols::{SymbolKind, SymbolTable};
+use core::range::Range;
 
 /// 检查变量类型
 pub fn check_variable_types(content: &str, symbol_table: &SymbolTable) -> Vec<Diagnostic> {
@@ -16,10 +16,7 @@ pub fn check_variable_types(content: &str, symbol_table: &SymbolTable) -> Vec<Di
             if let Some(ref type_annotation) = symbol.type_annotation {
                 /// 检查类型注解是否有效
                 if !is_valid_type_annotation(type_annotation) {
-                    diagnostics.push(Diagnostic::error(
-                        format!("无效的类型注解: {}", type_annotation),
-                        symbol.range.clone(),
-                    ));
+                    diagnostics.push(Diagnostic::error(format!("无效的类型注解: {}", type_annotation), symbol.range.clone()));
                 }
             }
 
@@ -28,10 +25,7 @@ pub fn check_variable_types(content: &str, symbol_table: &SymbolTable) -> Vec<Di
                 if let Some(ref type_annotation) = symbol.type_annotation {
                     if !types_compatible(type_annotation, inferred_type) {
                         diagnostics.push(Diagnostic::error(
-                            format!(
-                                "类型 '{}' 不能赋值给类型 '{}'",
-                                inferred_type, type_annotation
-                            ),
+                            format!("类型 '{}' 不能赋值给类型 '{}'", inferred_type, type_annotation),
                             symbol.range.clone(),
                         ));
                     }
@@ -40,10 +34,7 @@ pub fn check_variable_types(content: &str, symbol_table: &SymbolTable) -> Vec<Di
 
             /// 检查未使用的变量
             if !symbol.is_exported && !is_variable_used(content, &symbol.name) {
-                diagnostics.push(Diagnostic::warning(
-                    format!("变量 '{}' 已声明但未使用", symbol.name),
-                    symbol.range.clone(),
-                ));
+                diagnostics.push(Diagnostic::warning(format!("变量 '{}' 已声明但未使用", symbol.name), symbol.range.clone()));
             }
         }
     }
@@ -79,10 +70,7 @@ pub fn check_function_calls(content: &str, symbol_table: &SymbolTable) -> Vec<Di
                             if let (Some(actual), Some(expected)) = (call_args, expected_params) {
                                 if actual != expected {
                                     diagnostics.push(Diagnostic::error(
-                                        format!(
-                                            "函数 '{}' 期望 {} 个参数，但提供了 {} 个",
-                                            func_name, expected, actual
-                                        ),
+                                        format!("函数 '{}' 期望 {} 个参数，但提供了 {} 个", func_name, expected, actual),
                                         Range::from(line_offset + call_idx..line_offset + call_idx + 1),
                                     ));
                                 }
@@ -100,8 +88,20 @@ pub fn check_function_calls(content: &str, symbol_table: &SymbolTable) -> Vec<Di
 /// 检查类型注解是否有效
 fn is_valid_type_annotation(type_annotation: &str) -> bool {
     let valid_types = [
-        "string", "number", "boolean", "any", "unknown", "never", "void", "null", "undefined",
-        "object", "symbol", "bigint", "true", "false",
+        "string",
+        "number",
+        "boolean",
+        "any",
+        "unknown",
+        "never",
+        "void",
+        "null",
+        "undefined",
+        "object",
+        "symbol",
+        "bigint",
+        "true",
+        "false",
     ];
 
     let trimmed = type_annotation.trim();
@@ -241,11 +241,7 @@ fn extract_argument_count(call_expr: &str) -> Option<usize> {
             ')' => {
                 if depth == 1 {
                     /// 找到匹配的右括号
-                    return if comma_count == 0 && call_expr.trim() == "()" {
-                        Some(0)
-                    } else {
-                        Some(comma_count + 1)
-                    };
+                    return if comma_count == 0 && call_expr.trim() == "()" { Some(0) } else { Some(comma_count + 1) };
                 }
                 depth -= 1;
             }
@@ -323,7 +319,8 @@ fn is_variable_used(content: &str, variable_name: &str) -> bool {
                 if ch.is_alphanumeric() || ch == '_' || ch == '$' {
                     in_identifier = true;
                     current_identifier.push(ch);
-                } else {
+                }
+                else {
                     if in_identifier {
                         if current_identifier == variable_name {
                             usage_count += 1;
@@ -358,10 +355,13 @@ fn check_variable_shadowing(symbol_table: &SymbolTable) -> Vec<Diagnostic> {
             if let Some(existing_symbol) = symbol_names.get(&symbol.name) {
                 // 检查是否在嵌套作用域中
                 if is_nested_scope(symbol.range.start, existing_symbol.range.start, existing_symbol.range.end) {
-                    diagnostics.push(Diagnostic::warning(
-                        format!("变量 '{}' 阴影了外部作用域中的同名变量", symbol.name),
-                        symbol.range.clone(),
-                    ).with_fix(format!("重命名变量 '{}' 以避免阴影", symbol.name)));
+                    diagnostics.push(
+                        Diagnostic::warning(
+                            format!("变量 '{}' 阴影了外部作用域中的同名变量", symbol.name),
+                            symbol.range.clone(),
+                        )
+                        .with_fix(format!("重命名变量 '{}' 以避免阴影", symbol.name)),
+                    );
                 }
             }
 
@@ -377,6 +377,3 @@ fn check_variable_shadowing(symbol_table: &SymbolTable) -> Vec<Diagnostic> {
 fn is_nested_scope(new_pos: usize, outer_start: usize, outer_end: usize) -> bool {
     new_pos > outer_start && new_pos < outer_end
 }
-
-
-

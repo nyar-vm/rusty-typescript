@@ -2,8 +2,8 @@
 //!
 //! 检测语法错误，如括号不匹配、引号不匹配等。
 
-use core::range::Range;
 use super::Diagnostic;
+use core::range::Range;
 
 /// 括号类型
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -44,64 +44,48 @@ pub fn check_bracket_matching(content: &str) -> Vec<Diagnostic> {
 
     for (idx, ch) in content.char_indices() {
         match ch {
-            '(' => stack.push(BracketInfo {
-                bracket_type: BracketType::Parenthesis,
-                is_open: true,
-                position: idx,
-            }),
-            '[' => stack.push(BracketInfo {
-                bracket_type: BracketType::Square,
-                is_open: true,
-                position: idx,
-            }),
-            '{' => stack.push(BracketInfo {
-                bracket_type: BracketType::Curly,
-                is_open: true,
-                position: idx,
-            }),
+            '(' => stack.push(BracketInfo { bracket_type: BracketType::Parenthesis, is_open: true, position: idx }),
+            '[' => stack.push(BracketInfo { bracket_type: BracketType::Square, is_open: true, position: idx }),
+            '{' => stack.push(BracketInfo { bracket_type: BracketType::Curly, is_open: true, position: idx }),
             ')' => {
                 if let Some(top) = stack.pop() {
                     if top.bracket_type != BracketType::Parenthesis {
-                        diagnostics.push(Diagnostic::error(
-                            "括号不匹配：期望 ')'",
-                            Range::from(top.position..top.position + 1),
-                        ).with_fix(format!("将 '{}' 改为 '('", top.bracket_type)));
+                        diagnostics.push(
+                            Diagnostic::error("括号不匹配：期望 ')'", Range::from(top.position..top.position + 1))
+                                .with_fix(format!("将 '{}' 改为 '('", top.bracket_type)),
+                        );
                     }
-                } else {
-                    diagnostics.push(Diagnostic::error(
-                        "多余的闭合括号 ')'",
-                        Range::from(idx..idx + 1),
-                    ));
+                }
+                else {
+                    diagnostics.push(Diagnostic::error("多余的闭合括号 ')'", Range::from(idx..idx + 1)));
                 }
             }
             ']' => {
                 if let Some(top) = stack.pop() {
                     if top.bracket_type != BracketType::Square {
-                        diagnostics.push(Diagnostic::error(
-                            "括号不匹配：期望 ']'",
-                            Range::from(top.position..top.position + 1),
-                        ).with_fix(format!("将 '{}' 改为 '['", top.bracket_type)));
+                        diagnostics.push(
+                            Diagnostic::error("括号不匹配：期望 ']'", Range::from(top.position..top.position + 1))
+                                .with_fix(format!("将 '{}' 改为 '['", top.bracket_type)),
+                        );
                     }
-                } else {
-                    diagnostics.push(Diagnostic::error(
-                        "多余的闭合括号 ']'",
-                        Range::from(idx..idx + 1),
-                    ).with_fix("删除多余的 ']'"));
+                }
+                else {
+                    diagnostics
+                        .push(Diagnostic::error("多余的闭合括号 ']'", Range::from(idx..idx + 1)).with_fix("删除多余的 ']'"));
                 }
             }
             '}' => {
                 if let Some(top) = stack.pop() {
                     if top.bracket_type != BracketType::Curly {
-                        diagnostics.push(Diagnostic::error(
-                            "括号不匹配：期望 '}'",
-                            Range::from(top.position..top.position + 1),
-                        ).with_fix(format!("将 '{}' 改为 '{{'", top.bracket_type)));
+                        diagnostics.push(
+                            Diagnostic::error("括号不匹配：期望 '}'", Range::from(top.position..top.position + 1))
+                                .with_fix(format!("将 '{}' 改为 '{{'", top.bracket_type)),
+                        );
                     }
-                } else {
-                    diagnostics.push(Diagnostic::error(
-                        "多余的闭合括号 '}'",
-                        Range::from(idx..idx + 1),
-                    ).with_fix("删除多余的 '}'"));
+                }
+                else {
+                    diagnostics
+                        .push(Diagnostic::error("多余的闭合括号 '}'", Range::from(idx..idx + 1)).with_fix("删除多余的 '}'"));
                 }
             }
             _ => {}
@@ -120,10 +104,7 @@ pub fn check_bracket_matching(content: &str) -> Vec<Diagnostic> {
             BracketType::Square => "添加 ']' 以闭合括号",
             BracketType::Curly => "添加 '}' 以闭合括号",
         };
-        diagnostics.push(Diagnostic::error(
-            message,
-            Range::from(bracket.position..bracket.position + 1),
-        ).with_fix(fix));
+        diagnostics.push(Diagnostic::error(message, Range::from(bracket.position..bracket.position + 1)).with_fix(fix));
     }
 
     diagnostics
@@ -154,7 +135,8 @@ pub fn check_quote_matching(content: &str) -> Vec<Diagnostic> {
                 if in_single_quote {
                     in_single_quote = false;
                     quote_start = None;
-                } else {
+                }
+                else {
                     in_single_quote = true;
                     quote_start = Some(idx);
                 }
@@ -163,7 +145,8 @@ pub fn check_quote_matching(content: &str) -> Vec<Diagnostic> {
                 if in_double_quote {
                     in_double_quote = false;
                     quote_start = None;
-                } else {
+                }
+                else {
                     in_double_quote = true;
                     quote_start = Some(idx);
                 }
@@ -172,22 +155,23 @@ pub fn check_quote_matching(content: &str) -> Vec<Diagnostic> {
                 if in_template_string {
                     in_template_string = false;
                     quote_start = None;
-                } else {
+                }
+                else {
                     in_template_string = true;
                     quote_start = Some(idx);
                 }
             }
             '\n' if in_single_quote || in_double_quote => {
                 /// 字符串跨行（非模板字符串）
-            if let Some(start) = quote_start {
-                diagnostics.push(Diagnostic::error(
-                    "字符串不能包含未转义的换行符",
-                    Range::from(start..idx + 1),
-                ).with_fix("使用模板字符串 (`) 或转义换行符"));
-            }
-            in_single_quote = false;
-            in_double_quote = false;
-            quote_start = None;
+                if let Some(start) = quote_start {
+                    diagnostics.push(
+                        Diagnostic::error("字符串不能包含未转义的换行符", Range::from(start..idx + 1))
+                            .with_fix("使用模板字符串 (`) 或转义换行符"),
+                    );
+                }
+                in_single_quote = false;
+                in_double_quote = false;
+                quote_start = None;
             }
             _ => {}
         }
@@ -196,26 +180,23 @@ pub fn check_quote_matching(content: &str) -> Vec<Diagnostic> {
     /// 检查未闭合的引号
     if in_single_quote {
         if let Some(start) = quote_start {
-            diagnostics.push(Diagnostic::error(
-                "未闭合的单引号字符串",
-                Range::from(start..content.len()),
-            ).with_fix("添加 ' 以闭合字符串"));
+            diagnostics.push(
+                Diagnostic::error("未闭合的单引号字符串", Range::from(start..content.len())).with_fix("添加 ' 以闭合字符串"),
+            );
         }
     }
     if in_double_quote {
         if let Some(start) = quote_start {
-            diagnostics.push(Diagnostic::error(
-                "未闭合的双引号字符串",
-                Range::from(start..content.len()),
-            ).with_fix("添加 \" 以闭合字符串"));
+            diagnostics.push(
+                Diagnostic::error("未闭合的双引号字符串", Range::from(start..content.len())).with_fix("添加 \" 以闭合字符串"),
+            );
         }
     }
     if in_template_string {
         if let Some(start) = quote_start {
-            diagnostics.push(Diagnostic::error(
-                "未闭合的模板字符串",
-                Range::from(start..content.len()),
-            ).with_fix("添加 ` 以闭合字符串"));
+            diagnostics.push(
+                Diagnostic::error("未闭合的模板字符串", Range::from(start..content.len())).with_fix("添加 ` 以闭合字符串"),
+            );
         }
     }
 
@@ -266,31 +247,41 @@ fn check_semicolon_issues(content: &str) -> Vec<Diagnostic> {
         }
 
         /// 检查 continue/break 后是否有表达式
-        if (trimmed.starts_with("continue ") || trimmed.starts_with("break ")) &&
-           !trimmed.ends_with(';') {
+        if (trimmed.starts_with("continue ") || trimmed.starts_with("break ")) && !trimmed.ends_with(';') {
             /// continue 和 break 不应该有标签以外的表达式
             let after_keyword = trimmed.strip_prefix("continue").or_else(|| trimmed.strip_prefix("break")).unwrap_or("").trim();
             if !after_keyword.is_empty() && !after_keyword.chars().all(|c| c.is_alphanumeric() || c == '_' || c == '$') {
-                diagnostics.push(Diagnostic::error(
-                    "continue/break 后只能跟标签名",
-                    Range::from(offset..offset + line.len()),
-                ));
+                diagnostics.push(Diagnostic::error("continue/break 后只能跟标签名", Range::from(offset..offset + line.len())));
             }
         }
 
         // 检查语句是否以分号结尾（除了块语句）
-        if !trimmed.is_empty() && !trimmed.ends_with(';') && !trimmed.ends_with('{') && !trimmed.ends_with('}') &&
-           !trimmed.starts_with("if") && !trimmed.starts_with("for") && !trimmed.starts_with("while") &&
-           !trimmed.starts_with("function") && !trimmed.starts_with("class") && !trimmed.starts_with("interface") &&
-           !trimmed.starts_with("type") && !trimmed.starts_with("enum") && !trimmed.starts_with("export") &&
-           !trimmed.starts_with("import") && !trimmed.starts_with("return") && !trimmed.starts_with("continue") &&
-           !trimmed.starts_with("break") && !trimmed.starts_with("throw") && !trimmed.starts_with("try") &&
-           !trimmed.starts_with("catch") && !trimmed.starts_with("finally") && !trimmed.starts_with("case") &&
-           !trimmed.starts_with("default") && !trimmed.ends_with(':') {
-            diagnostics.push(Diagnostic::warning(
-                "语句可能缺少分号",
-                Range::from(offset..offset + line.len()),
-            ));
+        if !trimmed.is_empty()
+            && !trimmed.ends_with(';')
+            && !trimmed.ends_with('{')
+            && !trimmed.ends_with('}')
+            && !trimmed.starts_with("if")
+            && !trimmed.starts_with("for")
+            && !trimmed.starts_with("while")
+            && !trimmed.starts_with("function")
+            && !trimmed.starts_with("class")
+            && !trimmed.starts_with("interface")
+            && !trimmed.starts_with("type")
+            && !trimmed.starts_with("enum")
+            && !trimmed.starts_with("export")
+            && !trimmed.starts_with("import")
+            && !trimmed.starts_with("return")
+            && !trimmed.starts_with("continue")
+            && !trimmed.starts_with("break")
+            && !trimmed.starts_with("throw")
+            && !trimmed.starts_with("try")
+            && !trimmed.starts_with("catch")
+            && !trimmed.starts_with("finally")
+            && !trimmed.starts_with("case")
+            && !trimmed.starts_with("default")
+            && !trimmed.ends_with(':')
+        {
+            diagnostics.push(Diagnostic::warning("语句可能缺少分号", Range::from(offset..offset + line.len())));
         }
 
         offset += line.len() + 1;
@@ -311,18 +302,13 @@ fn check_keyword_usage(content: &str) -> Vec<Diagnostic> {
         if trimmed.starts_with("class ") {
             let after_class = trimmed.strip_prefix("class").unwrap_or("").trim();
             if after_class.is_empty() {
-                diagnostics.push(Diagnostic::error(
-                    "class 关键字后需要类名",
-                    Range::from(offset..offset + line.len()),
-                ));
-            } else if after_class.starts_with("extends ") || after_class.starts_with("implements ") {
+                diagnostics.push(Diagnostic::error("class 关键字后需要类名", Range::from(offset..offset + line.len())));
+            }
+            else if after_class.starts_with("extends ") || after_class.starts_with("implements ") {
                 /// 检查是否有类名
                 let parts: Vec<&str> = after_class.split_whitespace().collect();
                 if parts.len() < 2 {
-                    diagnostics.push(Diagnostic::error(
-                        "class 关键字后需要类名",
-                        Range::from(offset..offset + line.len()),
-                    ));
+                    diagnostics.push(Diagnostic::error("class 关键字后需要类名", Range::from(offset..offset + line.len())));
                 }
             }
         }
@@ -331,11 +317,9 @@ fn check_keyword_usage(content: &str) -> Vec<Diagnostic> {
         if trimmed.starts_with("function ") {
             let after_function = trimmed.strip_prefix("function").unwrap_or("").trim();
             if after_function.is_empty() {
-                diagnostics.push(Diagnostic::error(
-                    "function 关键字后需要函数名",
-                    Range::from(offset..offset + line.len()),
-                ));
-            } else if !after_function.chars().next().map(|c| c.is_alphabetic() || c == '_' || c == '$').unwrap_or(false) {
+                diagnostics.push(Diagnostic::error("function 关键字后需要函数名", Range::from(offset..offset + line.len())));
+            }
+            else if !after_function.chars().next().map(|c| c.is_alphabetic() || c == '_' || c == '$').unwrap_or(false) {
                 diagnostics.push(Diagnostic::error(
                     "函数名必须以字母、下划线或美元符号开头",
                     Range::from(offset..offset + line.len()),
@@ -347,10 +331,7 @@ fn check_keyword_usage(content: &str) -> Vec<Diagnostic> {
         if trimmed.starts_with("interface ") {
             let after_interface = trimmed.strip_prefix("interface").unwrap_or("").trim();
             if after_interface.is_empty() {
-                diagnostics.push(Diagnostic::error(
-                    "interface 关键字后需要接口名",
-                    Range::from(offset..offset + line.len()),
-                ));
+                diagnostics.push(Diagnostic::error("interface 关键字后需要接口名", Range::from(offset..offset + line.len())));
             }
         }
 
@@ -377,19 +358,19 @@ fn check_switch_statements(content: &str) -> Vec<Diagnostic> {
             has_default = false;
             case_count = 0;
             switch_start = offset;
-        } else if in_switch {
+        }
+        else if in_switch {
             if trimmed.starts_with("case ") {
                 case_count += 1;
                 // 检查 case 语句是否以冒号结尾
                 if !trimmed.ends_with(':') {
-                    diagnostics.push(Diagnostic::error(
-                        "case 语句必须以冒号结尾",
-                        Range::from(offset..offset + line.len()),
-                    ));
+                    diagnostics.push(Diagnostic::error("case 语句必须以冒号结尾", Range::from(offset..offset + line.len())));
                 }
-            } else if trimmed.starts_with("default:") {
+            }
+            else if trimmed.starts_with("default:") {
                 has_default = true;
-            } else if trimmed == "}" {
+            }
+            else if trimmed == "}" {
                 in_switch = false;
                 // 检查 switch 语句是否有至少一个 case
                 if case_count == 0 && !has_default {
@@ -421,7 +402,8 @@ fn check_try_catch_statements(content: &str) -> Vec<Diagnostic> {
         if trimmed == "try {" {
             in_try = true;
             try_start = offset;
-        } else if in_try {
+        }
+        else if in_try {
             if trimmed == "}" {
                 in_try = false;
                 // 检查是否有对应的 catch 或 finally
@@ -441,16 +423,15 @@ fn check_try_catch_statements(content: &str) -> Vec<Diagnostic> {
                     ));
                 }
             }
-        } else if trimmed.starts_with("catch (") {
+        }
+        else if trimmed.starts_with("catch (") {
             in_catch = true;
             // 检查 catch 语句的格式
             if !trimmed.ends_with(") {") {
-                diagnostics.push(Diagnostic::error(
-                    "catch 语句格式错误",
-                    Range::from(offset..offset + line.len()),
-                ));
+                diagnostics.push(Diagnostic::error("catch 语句格式错误", Range::from(offset..offset + line.len())));
             }
-        } else if in_catch {
+        }
+        else if in_catch {
             if trimmed == "}" {
                 in_catch = false;
             }
@@ -461,8 +442,6 @@ fn check_try_catch_statements(content: &str) -> Vec<Diagnostic> {
 
     diagnostics
 }
-
-
 
 /// 检查未使用的导入
 fn check_unused_imports(content: &str) -> Vec<Diagnostic> {
@@ -487,10 +466,10 @@ fn check_unused_imports(content: &str) -> Vec<Diagnostic> {
     // 检查每个导入是否被使用
     for import in imports {
         if !is_import_used(content, &import.name) {
-            diagnostics.push(Diagnostic::warning(
-                format!("导入 '{}' 未使用", import.name),
-                import.range,
-            ).with_fix(format!("删除未使用的导入 '{}'", import.name)));
+            diagnostics.push(
+                Diagnostic::warning(format!("导入 '{}' 未使用", import.name), import.range)
+                    .with_fix(format!("删除未使用的导入 '{}'", import.name)),
+            );
         }
     }
 
@@ -526,13 +505,11 @@ fn parse_import_statement(line: &str, line_offset: usize) -> Option<Vec<ImportIn
                 let name = item.split(' ').next()?;
                 let name_start = line_offset + line.find(name)?;
                 let name_end = name_start + name.len();
-                imports.push(ImportInfo {
-                    name: name.to_string(),
-                    range: Range::from(name_start..name_end),
-                });
+                imports.push(ImportInfo { name: name.to_string(), range: Range::from(name_start..name_end) });
             }
         }
-    } else if line.starts_with("import ") && !line.contains("*") && !line.contains("{") {
+    }
+    else if line.starts_with("import ") && !line.contains("*") && !line.contains("{") {
         // 解析默认导入
         let parts: Vec<&str> = line.split_whitespace().collect();
         if parts.len() >= 2 {
@@ -540,31 +517,22 @@ fn parse_import_statement(line: &str, line_offset: usize) -> Option<Vec<ImportIn
             if !name.starts_with("from") {
                 let name_start = line_offset + line.find(name)?;
                 let name_end = name_start + name.len();
-                imports.push(ImportInfo {
-                    name: name.to_string(),
-                    range: Range::from(name_start..name_end),
-                });
+                imports.push(ImportInfo { name: name.to_string(), range: Range::from(name_start..name_end) });
             }
         }
-    } else if line.starts_with("import * as ") {
+    }
+    else if line.starts_with("import * as ") {
         // 解析命名空间导入
         let parts: Vec<&str> = line.split_whitespace().collect();
         if parts.len() >= 3 {
             let name = parts[2];
             let name_start = line_offset + line.find(name)?;
             let name_end = name_start + name.len();
-            imports.push(ImportInfo {
-                name: name.to_string(),
-                range: Range::from(name_start..name_end),
-            });
+            imports.push(ImportInfo { name: name.to_string(), range: Range::from(name_start..name_end) });
         }
     }
 
-    if imports.is_empty() {
-        None
-    } else {
-        Some(imports)
-    }
+    if imports.is_empty() { None } else { Some(imports) }
 }
 
 /// 检查导入是否被使用
@@ -592,7 +560,8 @@ fn is_import_used(content: &str, import_name: &str) -> bool {
                 if ch.is_alphanumeric() || ch == '_' || ch == '$' {
                     in_identifier = true;
                     current_identifier.push(ch);
-                } else {
+                }
+                else {
                     if in_identifier {
                         if current_identifier == import_name {
                             usage_count += 1;

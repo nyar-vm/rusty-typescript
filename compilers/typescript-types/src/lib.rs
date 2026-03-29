@@ -2159,5 +2159,3 @@ impl ToTsValue for std::collections::HashMap<TsValue, TsValue> {
 unsafe impl Send for TsValue {}
 
 unsafe impl Sync for TsValue {}
-
-
