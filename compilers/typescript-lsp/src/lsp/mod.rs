@@ -889,7 +889,11 @@ impl TypeScriptLanguageService {
         trimmed.starts_with('=') && !trimmed.starts_with("==")
     }
 
-
+    /// 转换偏移量为位置
+    fn offset_to_position(&self, content: &str, offset: usize) -> oak_lsp::types::SourcePosition {
+        let (line, character) = self.get_line_and_column(content, offset);
+        oak_lsp::types::SourcePosition { line: line as u32, column: character as u32, length: 0, offset: offset }
+    }
 
     /// Calculate relevance score for a completion item
     fn calculate_relevance(&self, item: &CompletionItem, prefix: &str) -> f64 {
@@ -1486,8 +1490,7 @@ impl LanguageService for TypeScriptLanguageService {
                             _ => oak_lsp::types::InlayHintKind::Type,
                         }),
                         padding_left: Some(hint.kind == crate::lsp::inlay_hints::InlayHintKind::ParameterName),
-                        padding_right: Some(false),
-                        tooltip: hint.tooltip
+                        padding_right: Some(false)
                     }
                 })
                 .collect()
@@ -1597,11 +1600,7 @@ impl LanguageService for TypeScriptLanguageService {
         }
     }
 
-    /// 将偏移量转换为位置
-    fn offset_to_position(&self, content: &str, offset: usize) -> oak_lsp::types::SourcePosition {
-        let (line, character) = self.get_line_and_column(content, offset);
-        oak_lsp::types::SourcePosition { line: line as u32, column: character as u32, length: 0, offset: offset as u32 }
-    }
+
 }
 
 /// Start the LSP server
