@@ -1,3 +1,5 @@
+#![feature(new_range_api)]
+
 use typescript_lsp::TypeScriptLanguageService;
 
 #[test]
@@ -113,7 +115,7 @@ fn test_formatting() {
 
 #[test]
 fn test_range_formatting() {
-    use oak_core::Range;
+    use core::range::Range;
     use typescript_lsp::lsp::formatter::format_range;
 
     let code = "const x=1; const y=2; const z=3;";
@@ -127,18 +129,18 @@ fn test_range_formatting() {
 /// 验证诊断信息的创建和操作
 #[test]
 fn test_diagnostics() {
-    use oak_core::Range;
+    use core::range::Range;
     use typescript_lsp::lsp::diagnostics::{Diagnostic, DiagnosticLevel};
 
     // 测试诊断创建
-    let diag = Diagnostic::error("测试错误", Range::from(0..10));
+    let diag = Diagnostic::error("测试错误", ((0usize)..(10usize)).into());
     assert_eq!(diag.level, DiagnosticLevel::Error);
     assert_eq!(diag.message, "测试错误");
 
-    let diag = Diagnostic::warning("测试警告", Range::from(10..20));
+    let diag = Diagnostic::warning("测试警告", ((10usize)..(20usize)).into());
     assert_eq!(diag.level, DiagnosticLevel::Warning);
 
     // 测试诊断添加错误代码
-    let diag = Diagnostic::error("测试错误", Range::from(0..10)).with_code("TS1234");
+    let diag = Diagnostic::error("测试错误", ((0usize)..(10usize)).into()).with_code("TS1234");
     assert_eq!(diag.code, Some("TS1234".to_string()));
 }
