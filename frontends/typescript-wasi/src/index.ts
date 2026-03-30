@@ -1961,7 +1961,7 @@ export class WasmLoader {
         });
 
         try {
-            const module = await WebAssembly.compile(arrayBuffer);
+            const module = await WebAssembly.compile(arrayBuffer as BufferSource);
             this.updateProgress({
                 progress: 100,
                 stage: "编译完成",
