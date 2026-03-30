@@ -1,6 +1,7 @@
 {
     "name": "@nyar/typescript",
-    "version": "0.0.0",
+    "version": "0.1.0",
+    "description": "TypeScript WASI 包装层，提供对 TypeScript WASM 功能的 TypeScript 接口",
     "type": "module",
     "main": "./dist/index.js",
     "types": "./dist/index.d.ts",
@@ -21,6 +22,15 @@
         "build": "tsc && npx --no-install jco transpile ../../target/wasm32-wasip2/release/typescript_wasi.wasm --out-dir lib --name typescriptWasi",
         "dev": "tsc --watch"
     },
+    "keywords": [
+        "typescript",
+        "wasm",
+        "wasi",
+        "rust",
+        "compiler"
+    ],
+    "author": "Nyar",
+    "license": "MIT",
     "devDependencies": {
         "@types/node": "^20.19.37",
         "typescript": "^5.0.0"

@@ -2,7 +2,7 @@
 //!
 //! 提供错误消息的格式化和用户友好的错误展示功能
 
-import { RustyTypeScriptError, ErrorType, ErrorLocation } from "./index";
+import { RustyTypeScriptError, ErrorType, ErrorLocation } from "./errors";
 
 /**
  * 错误格式化选项
@@ -77,15 +77,15 @@ const ERROR_TYPE_COLORS: Record<ErrorType, string> = {
 };
 
 /**
- * 错误类型的中文名称
+ * Error type names in English
  */
 const ERROR_TYPE_NAMES: Record<ErrorType, string> = {
-    syntax: "语法错误",
-    type: "类型错误",
-    runtime: "运行时错误",
-    memory: "内存错误",
-    module: "模块错误",
-    ffi: "FFI 错误",
+    syntax: "Syntax Error",
+    type: "Type Error",
+    runtime: "Runtime Error",
+    memory: "Memory Error",
+    module: "Module Error",
+    ffi: "FFI Error",
 };
 
 /**
@@ -120,7 +120,7 @@ export function formatErrorMessage(
     if (opts.maxMessageLength && message.length > opts.maxMessageLength) {
         message = message.substring(0, opts.maxMessageLength) + "...";
     }
-    lines.push(`  消息: ${message}`);
+    lines.push(`  Message: ${message}`);
 
     if (error.location) {
         lines.push(formatLocation(error.location, opts));
@@ -157,16 +157,16 @@ export function formatLocation(location: ErrorLocation, options: FormatOptions =
     const cyan = opts.colorize ? ANSI_COLORS.cyan : "";
     const reset = opts.colorize ? ANSI_COLORS.reset : "";
 
-    let locationStr = "  位置: ";
+    let locationStr = "  Location: ";
 
     if (location.file) {
         locationStr += `${cyan}${location.file}:${location.line}:${location.column}${reset}`;
     } else {
-        locationStr += `行 ${location.line}, 列 ${location.column}`;
+        locationStr += `Line ${location.line}, Column ${location.column}`;
     }
 
     if (location.snippet) {
-        locationStr += `\n  代码: ${location.snippet}`;
+        locationStr += `\n  Code: ${location.snippet}`;
     }
 
     return locationStr;
@@ -191,7 +191,7 @@ export function formatErrorStack(error: RustyTypeScriptError, options: FormatOpt
     const lines = error.errorStack.split("\n");
     const formattedLines: string[] = [];
 
-    formattedLines.push("  堆栈跟踪:");
+    formattedLines.push("  Stack trace:");
 
     for (const line of lines) {
         const trimmed = line.trim();
@@ -220,7 +220,7 @@ function formatContext(
     const reset = opts.colorize ? ANSI_COLORS.reset : "";
 
     if (context.code) {
-        lines.push(`  代码片段:`);
+        lines.push(`  Code snippet:`);
         const codeLines = context.code.split("\n");
         for (let i = 0; i < Math.min(codeLines.length, opts.contextLines ?? 3); i++) {
             lines.push(`    ${codeLines[i]}`);
@@ -228,7 +228,7 @@ function formatContext(
     }
 
     if (context.variables && Object.keys(context.variables).length > 0) {
-        lines.push(`  变量状态:`);
+        lines.push(`  Variable state:`);
         for (const [name, value] of Object.entries(context.variables)) {
             const valueStr = typeof value === "object" ? JSON.stringify(value) : String(value);
             lines.push(`    ${blue}${name}${reset} = ${valueStr}`);
@@ -236,14 +236,14 @@ function formatContext(
     }
 
     if (context.callStack && context.callStack.length > 0) {
-        lines.push(`  调用链:`);
+        lines.push(`  Call stack:`);
         for (let i = 0; i < context.callStack.length; i++) {
             lines.push(`    ${i + 1}. ${context.callStack[i]}`);
         }
     }
 
     if (context.metadata && Object.keys(context.metadata).length > 0) {
-        lines.push(`  元数据:`);
+        lines.push(`  Metadata:`);
         for (const [key, value] of Object.entries(context.metadata)) {
             lines.push(`    ${key}: ${JSON.stringify(value)}`);
         }
@@ -265,7 +265,7 @@ function formatSuggestions(suggestions: string[], options: FormatOptions): strin
     const reset = opts.colorize ? ANSI_COLORS.reset : "";
 
     const lines: string[] = [];
-    lines.push(`  ${green}修复建议:${reset}`);
+    lines.push(`  ${green}Suggestions:${reset}`);
 
     for (let i = 0; i < suggestions.length; i++) {
         lines.push(`    ${i + 1}. ${suggestions[i]}`);
