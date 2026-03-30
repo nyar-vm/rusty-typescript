@@ -1,4 +1,4 @@
-use typescript_lsp::lsp::symbols::collector::{SymbolCollector, SymbolKind};
+use typescript_lsp::lsp::symbols::{SymbolCollector, SymbolKind};
 
 #[test]
 fn test_collect_variable() {

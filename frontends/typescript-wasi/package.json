@@ -16,7 +16,7 @@
     },
     "files": ["dist"],
     "scripts": {
-        "build": "rimraf dist && npx --no-install jco transpile ../../target/wasm32-wasip2/release/typescript_wasi.wasm --out-dir dist --name typescriptWasi",
+        "build": "rimraf dist && vite build",
         "dev": "tsc --watch",
         "test": "vitest"
     },
