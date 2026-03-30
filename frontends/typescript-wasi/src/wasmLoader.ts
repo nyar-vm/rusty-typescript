@@ -1,5 +1,5 @@
 //! WASM 加载器
-//! 
+//!
 //! 负责加载 WASM 模块，支持多种加载方式和错误恢复机制
 
 import { WasmLoadError, WasmLoadErrorType } from "./errors";
@@ -348,9 +348,13 @@ export class WasmLoader {
             } else if (this.options.url) {
                 module = await this.loadFromUrl(this.options.url);
             } else {
-                throw new WasmLoadError("No WASM module source specified (URL or Buffer)", "NetworkError", {
-                    suggestions: ["Please provide wasmUrl or wasmModule option"],
-                });
+                throw new WasmLoadError(
+                    "No WASM module source specified (URL or Buffer)",
+                    "NetworkError",
+                    {
+                        suggestions: ["Please provide wasmUrl or wasmModule option"],
+                    },
+                );
             }
 
             this._module = module;

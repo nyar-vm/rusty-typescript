@@ -242,7 +242,6 @@ impl Formatter {
                 }
 
                 '@' if !in_string && !in_comment && !in_multiline_comment && !in_template && line_start => {
-
                     self.append_char(&mut formatted, c, indent_level, line_start);
                     line_start = false;
                 }
@@ -462,9 +461,7 @@ impl Formatter {
                     }
                     line_start = false;
 
-                    if in_arrow_function {
-
-                    }
+                    if in_arrow_function {}
                 }
 
                 '+' | '-' | '*' | '/' | '%' | '>' | '<' | '!' | '&' | '|' | '^' | '~' | '?'

@@ -1,5 +1,5 @@
 //! 错误相关类型和类
-//! 
+//!
 //! 定义了所有错误类型、错误类和相关接口
 
 /**
@@ -212,7 +212,7 @@ export class RustyTypeScriptError extends Error {
 /**
  * WASM 加载错误类型枚举
  */
-export type WasmLoadErrorType = 
+export type WasmLoadErrorType =
     | "NetworkError"
     | "CompileError"
     | "InstantiateError"
@@ -286,7 +286,11 @@ export class WasmLoadError extends RustyTypeScriptError {
                 "Ensure WASM export functions exist",
                 "Check if memory limit is sufficient",
             ],
-            TimeoutError: ["Check network connection speed", "Consider increasing timeout", "Try using a smaller WASM file"],
+            TimeoutError: [
+                "Check network connection speed",
+                "Consider increasing timeout",
+                "Try using a smaller WASM file",
+            ],
         };
 
         super(message, errorTypeMap[loadErrorType], {

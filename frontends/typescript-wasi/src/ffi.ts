@@ -1,5 +1,5 @@
 //! FFI 相关类型和类
-//! 
+//!
 //! 定义了 FFI 函数、类型转换器和注册表
 
 import { RustyTypeScriptError } from "./errors";
@@ -220,9 +220,21 @@ export class FfiError extends RustyTypeScriptError {
                 "Ensure function is registered",
                 "Check function name case",
             ],
-            TypeMismatch: ["Check parameter types", "Verify function signature requirements", "Consider type conversion"],
-            InvalidSignature: ["Check function signature is correct", "Verify parameter count and types", "Consult function documentation"],
-            CallFailed: ["Check function implementation for errors", "Ensure parameter values are valid", "Check runtime environment"],
+            TypeMismatch: [
+                "Check parameter types",
+                "Verify function signature requirements",
+                "Consider type conversion",
+            ],
+            InvalidSignature: [
+                "Check function signature is correct",
+                "Verify parameter count and types",
+                "Consult function documentation",
+            ],
+            CallFailed: [
+                "Check function implementation for errors",
+                "Ensure parameter values are valid",
+                "Check runtime environment",
+            ],
         };
 
         super(message, "ffi", {
@@ -286,9 +298,13 @@ export class FfiError extends RustyTypeScriptError {
      * @returns FfiError 实例
      */
     public static invalidSignature(functionName: string, reason: string): FfiError {
-        return new FfiError(`FFI function "${functionName}" signature invalid: ${reason}`, "InvalidSignature", {
-            functionName,
-        });
+        return new FfiError(
+            `FFI function "${functionName}" signature invalid: ${reason}`,
+            "InvalidSignature",
+            {
+                functionName,
+            },
+        );
     }
 
     /**
@@ -1024,7 +1040,7 @@ export class FfiRegistry {
         const params = ffiFunction.signature.parameters
             .map((p) => {
                 const optional = p.optional ? "?" : "";
-                const defaultValue = 
+                const defaultValue =
                     p.defaultValue !== undefined ? ` = ${JSON.stringify(p.defaultValue)}` : "";
                 return `${p.name}${optional}: ${p.type}${defaultValue}`;
             })

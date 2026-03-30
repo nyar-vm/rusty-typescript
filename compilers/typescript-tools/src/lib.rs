@@ -1,9 +1,9 @@
 #![warn(missing_docs)]
 
 //! TypeScript 工具集
-//! 
+//!
 //! 提供 TypeScript 编译、执行、格式化等工具功能
-//! 
+//!
 //! ## 主要功能
 //! - 编译 TypeScript 代码
 //! - 执行 TypeScript 脚本
