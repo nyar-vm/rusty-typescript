@@ -9,7 +9,7 @@ default-members = [
 ]
 
 [workspace.package]
-version = "0.0.3"
+version = "0.0.4"
 edition = "2024"
 authors = ["Rusty TypeScript Team"]
 description = "Rusty TypeScript - A high-performance TypeScript compiler written in Rust"
@@ -43,14 +43,14 @@ regex = "1.12.3"
 base64 = "0.22.1"
 hex = "0.4.0"
 
-typescript = { path = "compilers/typescript", version = "0.0.3" }
-typescript-types = { path = "compilers/typescript-types", version = "0.0.3" }
-typescript-ir = { path = "compilers/typescript-ir", version = "0.0.3" }
-typescript-webidl = { path = "compilers/typescript-webidl", version = "0.0.3" }
+typescript = { path = "compilers/typescript", version = "0.0.4" }
+typescript-types = { path = "compilers/typescript-types", version = "0.0.4" }
+typescript-ir = { path = "compilers/typescript-ir", version = "0.0.4" }
+typescript-webidl = { path = "compilers/typescript-webidl", version = "0.0.4" }
 
-oak-core = { git = "https://github.com/ygg-lang/oaks.git", branch = "dev", version = "0.0.10" }
-oak-lsp = { git = "https://github.com/ygg-lang/oaks.git", branch = "dev", version = "0.0.10" }
-oak-mcp = { git = "https://github.com/ygg-lang/oaks.git", branch = "dev", version = "0.0.10" }
-oak-vfs = { git = "https://github.com/ygg-lang/oaks.git", branch = "dev", version = "0.0.10" }
-oak-idl = { git = "https://github.com/ygg-lang/oaks.git", branch = "dev", version = "0.0.10" }
-oak-typescript = { git = "https://github.com/ygg-lang/oaks.git", branch = "dev", version = "0.0.10" }
+oak-core = { git = "https://github.com/ygg-lang/oaks.git", branch = "dev", version = "0.0.11" }
+oak-lsp = { git = "https://github.com/ygg-lang/oaks.git", branch = "dev", version = "0.0.11" }
+oak-mcp = { git = "https://github.com/ygg-lang/oaks.git", branch = "dev", version = "0.0.11" }
+oak-vfs = { git = "https://github.com/ygg-lang/oaks.git", branch = "dev", version = "0.0.11" }
+oak-idl = { git = "https://github.com/ygg-lang/oaks.git", branch = "dev", version = "0.0.11" }
+oak-typescript = { git = "https://github.com/ygg-lang/oaks.git", branch = "dev", version = "0.0.11" }
