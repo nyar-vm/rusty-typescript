@@ -1,12 +1,12 @@
 #![doc = include_str!("readme.md")]
 
 use core::range::Range;
+use oak_core::Arc;
 use oak_lsp::{
     LanguageService, WorkspaceManager,
     types::{
         CodeAction, CompletionItem, Diagnostic, DocumentHighlight, FoldingRange, Hover, InitializeParams, InlayHint,
-        LocationRange, SemanticTokens, SignatureHelp, StructureItem, TextEdit, WorkspaceEdit, WorkspaceSymbol,
-        SourcePosition,
+        LocationRange, SemanticTokens, SignatureHelp, SourcePosition, StructureItem, TextEdit, WorkspaceEdit, WorkspaceSymbol,
     },
 };
 use oak_vfs::{MemoryVfs, Vfs};
@@ -17,7 +17,6 @@ use std::{
     sync::{Mutex, RwLock},
     thread,
 };
-use oak_core::Arc;
 
 pub mod completion;
 pub mod constants;
@@ -1067,8 +1066,6 @@ impl LanguageService for TypeScriptLanguageService {
         }
     }
 
-
-
     fn references<'a>(
         &'a self,
         uri: &'a str,
@@ -1112,8 +1109,6 @@ impl LanguageService for TypeScriptLanguageService {
             references
         }
     }
-
-
 
     fn document_symbols<'a>(&'a self, uri: &'a str) -> impl std::future::Future<Output = Vec<StructureItem>> + Send + 'a {
         async move {
@@ -1333,7 +1328,7 @@ impl LanguageService for TypeScriptLanguageService {
                         }),
                         padding_left: Some(hint.kind == crate::lsp::inlay_hints::InlayHintKind::ParameterName),
                         padding_right: Some(false),
-                        tooltip: None
+                        tooltip: None,
                     }
                 })
                 .collect()
@@ -1442,8 +1437,6 @@ impl LanguageService for TypeScriptLanguageService {
             result
         }
     }
-
-
 }
 
 /// Start the LSP server

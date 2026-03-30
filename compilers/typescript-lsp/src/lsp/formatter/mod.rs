@@ -34,8 +34,7 @@ pub enum LineEnding {
 }
 
 /// 代码格式化选项
-#[derive(Debug, Clone)]
-#[derive(Eq, Hash, PartialEq)]
+#[derive(Debug, Clone, Eq, Hash, PartialEq)]
 pub struct FormatOptions {
     /// 缩进大小（空格数）
     pub indent_size: u32,

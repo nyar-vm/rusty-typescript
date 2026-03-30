@@ -79,7 +79,7 @@ impl SymbolCollector {
             match chars[index] {
                 '{' => {
                     // 使用字符串切片而不是消耗迭代器
-                    let remaining = &line[index+1..];
+                    let remaining = &line[index + 1..];
                     let scope_type = self.determine_scope_type(remaining);
                     brace_stack.push((0, scope_type));
                     self.symbol_table.enter_scope(0, scope_type);

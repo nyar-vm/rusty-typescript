@@ -7,8 +7,7 @@ mod matcher;
 mod provider;
 mod sorter;
 
-pub use context::CompletionContext;
-pub use context::CompletionContextType;
+pub use context::{CompletionContext, CompletionContextType};
 pub use matcher::CompletionMatcher;
 pub use provider::CompletionProvider;
 pub use sorter::CompletionSorter;

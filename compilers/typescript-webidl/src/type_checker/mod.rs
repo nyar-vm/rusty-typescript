@@ -1294,8 +1294,14 @@ impl TypeInference {
     ///
     /// 返回推断出的类型信息
     fn infer_index_access_type(&self, expression: &str) -> InferredType {
-        let Some(open_bracket) = expression.find('[') else { return InferredType::new("any") };
-        let Some(close_bracket) = expression.rfind(']') else { return InferredType::new("any") };
+        let Some(open_bracket) = expression.find('[')
+        else {
+            return InferredType::new("any");
+        };
+        let Some(close_bracket) = expression.rfind(']')
+        else {
+            return InferredType::new("any");
+        };
 
         let object_name = &expression[..open_bracket];
         let index_str = &expression[open_bracket + 1..close_bracket];

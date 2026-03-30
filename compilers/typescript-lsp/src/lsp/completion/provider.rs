@@ -3,9 +3,11 @@
 //! 根据不同的上下文生成相应的补全建议。
 
 use super::*;
-use crate::lsp::completion::context::CompletionContextType;
-use crate::lsp::constants;
-use crate::lsp::symbols::{Symbol, SymbolKind, SymbolTable};
+use crate::lsp::{
+    completion::context::CompletionContextType,
+    constants,
+    symbols::{Symbol, SymbolKind, SymbolTable},
+};
 use oak_lsp::types::CompletionItem;
 
 /// 补全提供器
