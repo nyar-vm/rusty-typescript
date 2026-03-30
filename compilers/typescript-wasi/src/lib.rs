@@ -852,6 +852,7 @@ fn get_runtime() -> &'static Arc<Mutex<WasiRuntime>> {
 /// 初始化 WASI 模块
 ///
 /// 该函数在 WASI 模块加载时被调用。
+#[cfg(target_family = "wasm")]
 #[unsafe(export_name = "_start")]
 pub extern "C" fn _start() {
     // 初始化 WASI 环境
