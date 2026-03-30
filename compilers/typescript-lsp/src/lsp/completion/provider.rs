@@ -4,6 +4,7 @@
 
 use super::*;
 use crate::lsp::completion::context::CompletionContextType;
+use crate::lsp::constants;
 use crate::lsp::symbols::{Symbol, SymbolKind, SymbolTable};
 use oak_lsp::types::CompletionItem;
 
@@ -253,171 +254,12 @@ impl CompletionProvider {
 
     /// 添加关键字补全
     fn add_keyword_completions(completions: &mut Vec<CompletionItem>) {
-        let keywords = [
-            "abstract",
-            "any",
-            "as",
-            "async",
-            "await",
-            "boolean",
-            "break",
-            "case",
-            "catch",
-            "class",
-            "const",
-            "continue",
-            "debugger",
-            "default",
-            "delete",
-            "do",
-            "else",
-            "enum",
-            "export",
-            "extends",
-            "false",
-            "finally",
-            "for",
-            "function",
-            "if",
-            "implements",
-            "import",
-            "in",
-            "infer",
-            "interface",
-            "let",
-            "module",
-            "namespace",
-            "never",
-            "new",
-            "null",
-            "number",
-            "object",
-            "package",
-            "private",
-            "protected",
-            "public",
-            "readonly",
-            "require",
-            "return",
-            "static",
-            "string",
-            "super",
-            "switch",
-            "this",
-            "throw",
-            "true",
-            "try",
-            "type",
-            "typeof",
-            "var",
-            "void",
-            "while",
-            "with",
-            "yield",
-        ];
-
-        for keyword in keywords {
-            completions.push(CompletionItem {
-                label: keyword.to_string(),
-                kind: Some(oak_lsp::types::CompletionItemKind::Keyword),
-                detail: Some("Keyword".to_string()),
-                documentation: None,
-                insert_text: Some(keyword.to_string()),
-            });
-        }
+        completions.extend(constants::get_keyword_completions());
     }
 
     /// 添加内置属性
     fn add_builtin_properties(type_name: &str, completions: &mut Vec<CompletionItem>) {
-        let string_methods = [
-            "charAt",
-            "charCodeAt",
-            "concat",
-            "endsWith",
-            "includes",
-            "indexOf",
-            "lastIndexOf",
-            "length",
-            "localeCompare",
-            "match",
-            "padEnd",
-            "padStart",
-            "repeat",
-            "replace",
-            "replaceAll",
-            "search",
-            "slice",
-            "split",
-            "startsWith",
-            "substring",
-            "toLowerCase",
-            "toUpperCase",
-            "trim",
-            "trimStart",
-            "trimEnd",
-        ];
-
-        let number_methods = ["toExponential", "toFixed", "toLocaleString", "toPrecision", "toString"];
-
-        let array_methods = [
-            "concat",
-            "every",
-            "fill",
-            "filter",
-            "find",
-            "findIndex",
-            "flat",
-            "flatMap",
-            "forEach",
-            "includes",
-            "indexOf",
-            "join",
-            "lastIndexOf",
-            "length",
-            "map",
-            "pop",
-            "push",
-            "reduce",
-            "reduceRight",
-            "reverse",
-            "shift",
-            "slice",
-            "some",
-            "sort",
-            "splice",
-            "unshift",
-        ];
-
-        let object_methods =
-            ["hasOwnProperty", "isPrototypeOf", "propertyIsEnumerable", "toLocaleString", "toString", "valueOf"];
-
-        let methods = if type_name == "string" || type_name == "String" {
-            Some(&string_methods[..])
-        }
-        else if type_name == "number" || type_name == "Number" {
-            Some(&number_methods[..])
-        }
-        else if type_name.ends_with("[]") || type_name == "Array" {
-            Some(&array_methods[..])
-        }
-        else if type_name == "object" || type_name == "Object" {
-            Some(&object_methods[..])
-        }
-        else {
-            None
-        };
-
-        if let Some(methods) = methods {
-            for method in methods {
-                completions.push(CompletionItem {
-                    label: method.to_string(),
-                    kind: Some(oak_lsp::types::CompletionItemKind::Method),
-                    detail: Some(format!("{} method", type_name)),
-                    documentation: None,
-                    insert_text: Some(method.to_string()),
-                });
-            }
-        }
+        completions.extend(constants::get_builtin_method_completions(type_name));
     }
 
     /// 获取类型成员
