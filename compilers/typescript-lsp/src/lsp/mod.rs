@@ -21,6 +21,8 @@ use std::{
 pub mod completion;
 pub mod constants;
 pub mod diagnostics;
+/// 代码格式化模块
+/// 提供 TypeScript 代码的格式化功能
 pub mod formatter;
 pub mod highlighter;
 pub mod inlay_hints;
@@ -72,7 +74,7 @@ impl TypeScriptLanguageService {
     }
 
     /// Get document content by URI
-    fn get_document(&self, uri: &str) -> Option<Cow<str>> {
+    fn get_document(&self, uri: &str) -> Option<Cow<'_, str>> {
         let documents = self.documents.read().unwrap();
         documents.get(uri).map(|s| Cow::Owned(s.clone()))
     }
@@ -365,7 +367,7 @@ impl TypeScriptLanguageService {
                     // Check if not escaped
                     let mut escaped = false;
                     let mut j = i - 1;
-                    while j >= 0 {
+                    while j > 0 {
                         if let Some(ch) = text.chars().nth(j) {
                             if ch == '\\' {
                                 escaped = !escaped;
@@ -462,7 +464,7 @@ impl TypeScriptLanguageService {
     }
 
     /// Get file content from VFS
-    fn get_file_content(&self, uri: &str) -> Option<Cow<str>> {
+    fn get_file_content(&self, uri: &str) -> Option<Cow<'_, str>> {
         self.vfs.get_source(uri).map(|source| Cow::Owned(source.text().to_string()))
     }
 
@@ -539,7 +541,7 @@ impl TypeScriptLanguageService {
         let line_start = if line == 0 { 0 } else { line_offsets[line - 1] };
 
         let mut col = 0;
-        for (i, c) in text[line_start..offset].char_indices() {
+        for (_i, _c) in text[line_start..offset].char_indices() {
             col += 1;
         }
 
@@ -568,7 +570,7 @@ impl TypeScriptLanguageService {
     }
 
     /// Parse format options
-    pub fn parse_format_options(&self, tab_size: u32, insert_spaces: bool) -> FormatOptions {
+    pub fn parse_format_options(&self, _tab_size: u32, _insert_spaces: bool) -> FormatOptions {
         FormatOptions::default()
     }
 
@@ -618,21 +620,21 @@ impl TypeScriptLanguageService {
     }
 
     /// Infer object type from object literal
-    fn infer_object_type(&self, expr: &str) -> String {
+    fn infer_object_type(&self, _expr: &str) -> String {
         // Simplified object type inference
         // In a real implementation, we would parse the object literal and infer property types
         "object".to_string()
     }
 
     /// Infer array type from array literal
-    fn infer_array_type(&self, expr: &str) -> String {
+    fn infer_array_type(&self, _expr: &str) -> String {
         // Simplified array type inference
         // In a real implementation, we would analyze array elements to infer a more specific type
         "any[]".to_string()
     }
 
     /// Infer function type from function expression
-    fn infer_function_type(&self, expr: &str) -> String {
+    fn infer_function_type(&self, _expr: &str) -> String {
         // Simplified function type inference
         // In a real implementation, we would parse function parameters and return type
         "Function".to_string()
@@ -1283,10 +1285,10 @@ impl LanguageService for TypeScriptLanguageService {
 
     fn semantic_tokens<'a>(&'a self, uri: &'a str) -> impl std::future::Future<Output = Option<SemanticTokens>> + Send + 'a {
         async move {
-            let content = self.get_document(uri).or_else(|| self.get_file_content(uri))?;
+            let _content = self.get_document(uri).or_else(|| self.get_file_content(uri))?;
 
             /// 获取符号表用于语义高亮
-            let symbol_table = self.get_symbol_table(uri).unwrap_or_default();
+            let _symbol_table = self.get_symbol_table(uri).unwrap_or_default();
 
             /// 使用 highlighter 模块进行语法高亮
             /// 这里我们返回一个空的实现
@@ -1380,7 +1382,7 @@ impl LanguageService for TypeScriptLanguageService {
             };
 
             // 检查缓存
-            let content_hash = self.calculate_hash(&content);
+            let _content_hash = self.calculate_hash(&content);
             let cache_key = uri.to_string();
             {
                 let cache = self.diagnostic_cache.lock().unwrap();
@@ -1390,30 +1392,30 @@ impl LanguageService for TypeScriptLanguageService {
                 }
             }
 
-            /// 获取或更新符号表
+            // 获取或更新符号表
             let symbol_table = self.get_symbol_table(uri).unwrap_or_else(|| {
                 self.update_symbol_table(uri, &content);
                 self.get_symbol_table(uri).unwrap_or_default()
             });
 
-            /// 获取修改范围
+            // 获取修改范围
             let change_range = {
                 let changes = self.document_changes.read().unwrap();
                 changes.get(uri).cloned().unwrap_or(None)
             };
 
-            /// 创建诊断分析器
+            // 创建诊断分析器
             let analyzer = DiagnosticAnalyzer::new(symbol_table);
 
-            /// 分析诊断（使用增量诊断）
+            // 分析诊断（使用增量诊断）
             let diagnostics = analyzer.analyze_with_range(&content, change_range);
 
-            /// 转换为 LSP Diagnostic 格式
+            // 转换为 LSP Diagnostic 格式
             let result: Vec<Diagnostic> = diagnostics
                 .into_iter()
                 .map(|d| {
-                    let (start_line, start_col) = self.get_line_and_column(&content, d.range.start);
-                    let (end_line, end_col) = self.get_line_and_column(&content, d.range.end);
+                    let (_start_line, _start_col) = self.get_line_and_column(&content, d.range.start);
+                    let (_end_line, _end_col) = self.get_line_and_column(&content, d.range.end);
 
                     Diagnostic {
                         range: d.range,

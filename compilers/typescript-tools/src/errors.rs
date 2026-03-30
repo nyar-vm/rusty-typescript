@@ -143,6 +143,11 @@ impl From<io::Error> for FormatError {
 }
 
 /// 通用结果类型
+/// 配置操作结果
 pub type ConfigResult<T> = Result<T, ConfigError>;
+
+/// 编译操作结果
 pub type CompileResult<T> = Result<T, CompileError>;
+
+/// 格式化操作结果
 pub type FormatResult<T> = Result<T, FormatError>;

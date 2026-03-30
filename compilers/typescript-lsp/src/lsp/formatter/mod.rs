@@ -157,8 +157,9 @@ impl Formatter {
         let mut in_type_annotation = false;
         let mut in_generic = false;
         let mut generic_depth = 0;
-        let mut in_interface = false;
-        let mut in_decorator = false;
+        let _arrow_param_count = 0;
+        let _in_interface = false;
+        let _in_decorator = false;
         let mut chars = text.chars().peekable();
 
         while let Some(c) = chars.next() {
@@ -227,7 +228,7 @@ impl Formatter {
 
                 '\n' => {
                     in_comment = false;
-                    in_decorator = false;
+
                     match self.options.line_ending {
                         LineEnding::CRLF => formatted.push_str("\r\n"),
                         LineEnding::LF => formatted.push('\n'),
@@ -241,7 +242,7 @@ impl Formatter {
                 }
 
                 '@' if !in_string && !in_comment && !in_multiline_comment && !in_template && line_start => {
-                    in_decorator = true;
+
                     self.append_char(&mut formatted, c, indent_level, line_start);
                     line_start = false;
                 }
@@ -462,7 +463,7 @@ impl Formatter {
                     line_start = false;
 
                     if in_arrow_function {
-                        arrow_param_count += 1;
+
                     }
                 }
 

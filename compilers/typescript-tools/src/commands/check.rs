@@ -92,7 +92,7 @@ pub fn execute(options: CheckOptions) -> CommandResult {
 fn check_file(file: &Path, options: &CheckOptions) -> Result<(usize, usize), String> {
     let content = std::fs::read_to_string(file).map_err(|e| format!("无法读取文件: {}", e))?;
 
-    let mut errors = 0;
+    let errors = 0;
     let mut warnings = 0;
 
     /// 简单的语法检查

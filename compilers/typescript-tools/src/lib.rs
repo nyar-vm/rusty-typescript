@@ -1,5 +1,16 @@
 #![warn(missing_docs)]
 
+//! TypeScript 工具集
+//! 
+//! 提供 TypeScript 编译、执行、格式化等工具功能
+//! 
+//! ## 主要功能
+//! - 编译 TypeScript 代码
+//! - 执行 TypeScript 脚本
+//! - 代码格式化
+//! - 增量编译
+//! - 依赖分析
+
 use tracing::debug;
 use tracing_subscriber::{
     filter::EnvFilter,
@@ -7,11 +18,28 @@ use tracing_subscriber::{
     prelude::*,
 };
 
+/// 命令模块
+/// 提供各种命令行工具功能
 pub mod commands;
+
+/// 编译器模块
+/// 提供 TypeScript 编译功能
 pub mod compiler;
+
+/// 配置模块
+/// 提供配置管理功能
 pub mod config;
+
+/// 错误模块
+/// 定义各种错误类型
 pub mod errors;
+
+/// 格式化模块
+/// 提供代码格式化功能
 pub mod formatter;
+
+/// 工具模块
+/// 提供通用工具函数
 pub mod utils;
 
 pub use compiler::incremental::{CompileCache, DependencyGraph, IncrementalCompiler};

@@ -21,7 +21,7 @@ pub fn check_variable_types(content: &str, symbol_table: &SymbolTable) -> Vec<Di
             }
 
             /// 检查变量类型与初始化值是否匹配
-            if let Some(ref type_annotation) = symbol.type_annotation {
+            if let Some(_) = symbol.type_annotation {
                 // 这里需要实现类型推断逻辑
                 // 暂时注释掉，因为需要完整的类型推断系统
             }
@@ -305,7 +305,7 @@ fn is_variable_used(content: &str, variable_name: &str) -> bool {
         // 检查是否是实际使用
         if !in_declaration && trimmed.contains(variable_name) {
             // 确保是完整的变量名
-            let mut chars = trimmed.chars();
+            let chars = trimmed.chars();
             let mut in_identifier = false;
             let mut current_identifier = String::new();
 

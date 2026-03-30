@@ -552,7 +552,7 @@ fn is_import_used(content: &str, import_name: &str) -> bool {
         // 检查是否是实际使用
         if !in_import && trimmed.contains(import_name) {
             // 确保是完整的标识符
-            let mut chars = trimmed.chars();
+            let chars = trimmed.chars();
             let mut in_identifier = false;
             let mut current_identifier = String::new();
 

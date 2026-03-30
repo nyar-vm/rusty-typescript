@@ -21,8 +21,11 @@ pub enum CompletionContextType {
 
 /// 补全上下文
 pub struct CompletionContext {
+    /// 上下文类型
     pub context_type: CompletionContextType,
+    /// 补全前缀
     pub prefix: String,
+    /// 对象名称（用于成员访问上下文）
     pub object_name: Option<String>,
 }
 
@@ -189,7 +192,7 @@ impl ContextDetector {
                     // Check if not escaped
                     let mut escaped = false;
                     let mut j = i - 1;
-                    while j >= 0 {
+                    while j > 0 {
                         if let Some(ch) = text.chars().nth(j) {
                             if ch == '\\' {
                                 escaped = !escaped;

@@ -180,7 +180,7 @@ impl DiagnosticAnalyzer {
 
     /// 检查符号是否被使用
     fn is_symbol_used(&self, content: &str, symbol_name: &str) -> bool {
-        let declaration_pattern =
+        let _declaration_pattern =
             format!("(const|let|var|function|class|interface|type|enum)\\s+{}", regex_escape(symbol_name));
 
         let mut found_declaration = false;
@@ -189,7 +189,7 @@ impl DiagnosticAnalyzer {
         for (line_idx, line) in content.lines().enumerate() {
             /// 简单检测：统计符号出现次数
             if line.contains(symbol_name) {
-                let line_offset = self.get_line_offset(content, line_idx);
+                let _line_offset = self.get_line_offset(content, line_idx);
 
                 /// 检查是否是声明行
                 if !found_declaration && self.is_declaration_line(line, symbol_name) {
@@ -225,7 +225,7 @@ impl DiagnosticAnalyzer {
     }
 
     /// 检查是否是实际使用
-    fn is_actual_usage(&self, line: &str, symbol_name: &str) -> bool {
+    fn is_actual_usage(&self, line: &str, _symbol_name: &str) -> bool {
         let trimmed = line.trim();
 
         /// 跳过注释行

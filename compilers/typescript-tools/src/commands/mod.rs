@@ -1,9 +1,20 @@
 /// 命令模块
 ///
 /// 包含各种 CLI 命令的实现
+/// 构建命令
+/// 编译 TypeScript 代码
 pub mod build;
+
+/// 检查命令
+/// 检查 TypeScript 代码的语法和类型错误
 pub mod check;
+
+/// 格式化命令
+/// 格式化 TypeScript 代码
 pub mod fmt;
+
+/// 运行命令
+/// 执行 TypeScript 脚本
 pub mod run;
 
 /// 命令执行结果
