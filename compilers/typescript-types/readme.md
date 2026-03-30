@@ -1,14 +1,14 @@
-# TypeScript 类型系统 API 文档
+# TypeScript Type System API Documentation
 
-## 概述
+## 📋 Overview
 
-TypeScript 类型系统是 Rusty TypeScript 项目的核心组件之一，提供了完整的 TypeScript 类型表示和操作功能。本文档详细介绍了类型系统的 API 接口，帮助开发者理解和使用类型系统的各项功能。
+The TypeScript type system is one of the core components of the Rusty TypeScript project, providing complete TypeScript type representation and manipulation functionality. This documentation details the type system's API interfaces, helping developers understand and use the various features of the type system.
 
-## 核心类型
+## 🔍 Core Types
 
-### TsValue 枚举
+### TsValue Enum
 
-`TsValue` 是类型系统的核心类型，表示 TypeScript 中的所有可能值和类型。
+`TsValue` is the core type of the type system, representing all possible values and types in TypeScript.
 
 ```rust
 pub enum TsValue {
@@ -52,83 +52,83 @@ pub enum TsValue {
 }
 ```
 
-## 类型操作 API
+## 🛠️ Type Operation API
 
-### 类型检查方法
+### Type Checking Methods
 
-| 方法名 | 描述 | 返回类型 |
-|-------|------|---------|
-| `is_undefined()` | 检查是否为 undefined 类型 | `bool` |
-| `is_null()` | 检查是否为 null 类型 | `bool` |
-| `is_boolean()` | 检查是否为 boolean 类型 | `bool` |
-| `is_number()` | 检查是否为 number 类型 | `bool` |
-| `is_string()` | 检查是否为 string 类型 | `bool` |
-| `is_object()` | 检查是否为 object 类型 | `bool` |
-| `is_array()` | 检查是否为 array 类型 | `bool` |
-| `is_function()` | 检查是否为 function 类型 | `bool` |
-| `is_error()` | 检查是否为 error 类型 | `bool` |
-| `is_union()` | 检查是否为 union 类型 | `bool` |
-| `is_generic()` | 检查是否为 generic 类型 | `bool` |
-| `is_symbol()` | 检查是否为 symbol 类型 | `bool` |
-| `is_bigint()` | 检查是否为 bigint 类型 | `bool` |
-| `is_date()` | 检查是否为 date 类型 | `bool` |
-| `is_regexp()` | 检查是否为 regexp 类型 | `bool` |
-| `is_map()` | 检查是否为 map 类型 | `bool` |
-| `is_set()` | 检查是否为 set 类型 | `bool` |
-| `is_promise()` | 检查是否为 promise 类型 | `bool` |
-| `is_iterable()` | 检查是否为 iterable 类型 | `bool` |
-| `is_conditional()` | 检查是否为 conditional 类型 | `bool` |
-| `is_mapped()` | 检查是否为 mapped 类型 | `bool` |
-| `is_template_literal()` | 检查是否为 template literal 类型 | `bool` |
-| `is_keyof()` | 检查是否为 keyof 类型 | `bool` |
-| `is_typeof()` | 检查是否为 typeof 类型 | `bool` |
-| `is_indexed_access()` | 检查是否为 indexed access 类型 | `bool` |
-| `is_tuple()` | 检查是否为 tuple 类型 | `bool` |
-| `is_readonly()` | 检查是否为 readonly 类型 | `bool` |
-| `is_nullable()` | 检查是否为 nullable 类型 | `bool` |
-| `is_non_nullable()` | 检查是否为 non-nullable 类型 | `bool` |
-| `is_infer()` | 检查是否为 infer 类型 | `bool` |
-| `is_function_type()` | 检查是否为 function type 类型 | `bool` |
-| `is_constructor_type()` | 检查是否为 constructor type 类型 | `bool` |
-| `is_this_type()` | 检查是否为 this 类型 | `bool` |
-| `is_never()` | 检查是否为 never 类型 | `bool` |
-| `is_unknown()` | 检查是否为 unknown 类型 | `bool` |
-| `is_any()` | 检查是否为 any 类型 | `bool` |
-| `is_void()` | 检查是否为 void 类型 | `bool` |
-| `is_primitive()` | 检查是否为原始类型 | `bool` |
-| `is_complex()` | 检查是否为复合类型 | `bool` |
-| `is_literal()` | 检查是否为字面量类型 | `bool` |
+| Method Name | Description | Return Type |
+|------------|-------------|------------|
+| `is_undefined()` | Check if value is undefined type | `bool` |
+| `is_null()` | Check if value is null type | `bool` |
+| `is_boolean()` | Check if value is boolean type | `bool` |
+| `is_number()` | Check if value is number type | `bool` |
+| `is_string()` | Check if value is string type | `bool` |
+| `is_object()` | Check if value is object type | `bool` |
+| `is_array()` | Check if value is array type | `bool` |
+| `is_function()` | Check if value is function type | `bool` |
+| `is_error()` | Check if value is error type | `bool` |
+| `is_union()` | Check if value is union type | `bool` |
+| `is_generic()` | Check if value is generic type | `bool` |
+| `is_symbol()` | Check if value is symbol type | `bool` |
+| `is_bigint()` | Check if value is bigint type | `bool` |
+| `is_date()` | Check if value is date type | `bool` |
+| `is_regexp()` | Check if value is regexp type | `bool` |
+| `is_map()` | Check if value is map type | `bool` |
+| `is_set()` | Check if value is set type | `bool` |
+| `is_promise()` | Check if value is promise type | `bool` |
+| `is_iterable()` | Check if value is iterable type | `bool` |
+| `is_conditional()` | Check if value is conditional type | `bool` |
+| `is_mapped()` | Check if value is mapped type | `bool` |
+| `is_template_literal()` | Check if value is template literal type | `bool` |
+| `is_keyof()` | Check if value is keyof type | `bool` |
+| `is_typeof()` | Check if value is typeof type | `bool` |
+| `is_indexed_access()` | Check if value is indexed access type | `bool` |
+| `is_tuple()` | Check if value is tuple type | `bool` |
+| `is_readonly()` | Check if value is readonly type | `bool` |
+| `is_nullable()` | Check if value is nullable type | `bool` |
+| `is_non_nullable()` | Check if value is non-nullable type | `bool` |
+| `is_infer()` | Check if value is infer type | `bool` |
+| `is_function_type()` | Check if value is function type | `bool` |
+| `is_constructor_type()` | Check if value is constructor type | `bool` |
+| `is_this_type()` | Check if value is this type | `bool` |
+| `is_never()` | Check if value is never type | `bool` |
+| `is_unknown()` | Check if value is unknown type | `bool` |
+| `is_any()` | Check if value is any type | `bool` |
+| `is_void()` | Check if value is void type | `bool` |
+| `is_primitive()` | Check if value is primitive type | `bool` |
+| `is_complex()` | Check if value is complex type | `bool` |
+| `is_literal()` | Check if value is literal type | `bool` |
 
-### 类型转换方法
+### Type Conversion Methods
 
-| 方法名 | 描述 | 返回类型 |
-|-------|------|---------|
-| `to_boolean()` | 转换为 boolean 类型 | `bool` |
-| `to_number()` | 转换为 number 类型 | `f64` |
-| `to_string()` | 转换为 string 类型 | `String` |
-| `type_name()` | 获取类型的字符串表示 | `String` |
+| Method Name | Description | Return Type |
+|------------|-------------|------------|
+| `to_boolean()` | Convert to boolean type | `bool` |
+| `to_number()` | Convert to number type | `f64` |
+| `to_string()` | Convert to string type | `String` |
+| `type_name()` | Get string representation of type | `String` |
 
-### 类型操作方法
+### Type Operation Methods
 
-| 方法名 | 描述 | 参数 | 返回类型 |
-|-------|------|------|---------|
-| `is_assignable_to()` | 检查类型是否可赋值给目标类型 | `target: &TsValue` | `bool` |
-| `get_property_keys()` | 获取类型的所有属性键 | 无 | `Vec<String>` |
-| `get_property_type()` | 获取指定属性的类型 | `key: &str` | `Option<TsValue>` |
-| `evaluate_conditional()` | 评估条件类型 | `check_type: &TsValue, extends_type: &TsValue` | `Option<bool>` |
-| `infer_type_params()` | 推断类型参数 | `target: &TsValue` | `InferenceResult` |
-| `substitute_type_params()` | 替换类型参数 | `substitutions: &HashMap<String, TsValue>` | `TsValue` |
-| `intersection_with()` | 计算两个类型的交集 | `other: &TsValue` | `TsValue` |
-| `difference_with()` | 计算两个类型的差集 | `other: &TsValue` | `TsValue` |
-| `apply_mapped_type()` | 应用映射类型到对象 | `mapped_type: &Mapped` | `TsValue` |
-| `simplify()` | 简化类型 | 无 | `TsValue` |
-| `get_base_type()` | 获取类型的基础类型 | 无 | `TsValue` |
+| Method Name | Description | Parameters | Return Type |
+|------------|-------------|------------|------------|
+| `is_assignable_to()` | Check if type is assignable to target type | `target: &TsValue` | `bool` |
+| `get_property_keys()` | Get all property keys of type | None | `Vec<String>` |
+| `get_property_type()` | Get type of specified property | `key: &str` | `Option<TsValue>` |
+| `evaluate_conditional()` | Evaluate conditional type | `check_type: &TsValue, extends_type: &TsValue` | `Option<bool>` |
+| `infer_type_params()` | Infer type parameters | `target: &TsValue` | `InferenceResult` |
+| `substitute_type_params()` | Substitute type parameters | `substitutions: &HashMap<String, TsValue>` | `TsValue` |
+| `intersection_with()` | Calculate intersection of two types | `other: &TsValue` | `TsValue` |
+| `difference_with()` | Calculate difference of two types | `other: &TsValue` | `TsValue` |
+| `apply_mapped_type()` | Apply mapped type to object | `mapped_type: &Mapped` | `TsValue` |
+| `simplify()` | Simplify type | None | `TsValue` |
+| `get_base_type()` | Get base type of type | None | `TsValue` |
 
-## 辅助类型
+## 📦 Helper Types
 
-### Conditional 类型
+### Conditional Type
 
-表示条件类型 `T extends U ? X : Y`。
+Represents conditional type `T extends U ? X : Y`.
 
 ```rust
 pub struct Conditional {
@@ -140,9 +140,9 @@ pub struct Conditional {
 }
 ```
 
-### Mapped 类型
+### Mapped Type
 
-表示映射类型 `{ [K in keyof T]: V }`。
+Represents mapped type `{ [K in keyof T]: V }`.
 
 ```rust
 pub struct Mapped {
@@ -154,9 +154,9 @@ pub struct Mapped {
 }
 ```
 
-### TemplateLiteral 类型
+### TemplateLiteral Type
 
-表示模板字面量类型 `` `${string}` ``。
+Represents template literal type `` `${string}` ``.
 
 ```rust
 pub struct TemplateLiteral {
@@ -164,38 +164,38 @@ pub struct TemplateLiteral {
 }
 ```
 
-## 示例用法
+## 🚀 Usage Examples
 
-### 创建和操作类型
+### Creating and Manipulating Types
 
 ```rust
 use typescript_types::{TsValue, Conditional, Mapped};
 
-// 创建基本类型
+// Create basic types
 let number_type = TsValue::Number(42.0);
 let string_type = TsValue::String("hello".to_string());
 let boolean_type = TsValue::Boolean(true);
 
-// 创建对象类型
+// Create object type
 let mut props = std::collections::HashMap::new();
 props.insert("name".to_string(), TsValue::String("TypeScript".to_string()));
 props.insert("version".to_string(), TsValue::Number(5.0));
 let object_type = TsValue::Object(props);
 
-// 创建联合类型
+// Create union type
 let union_type = TsValue::Union(vec![
     TsValue::Number(1.0),
     TsValue::String("text".to_string()),
     TsValue::Boolean(true),
 ]);
 
-// 检查类型
+// Check types
 assert!(number_type.is_number());
 assert!(string_type.is_string());
 assert!(object_type.is_object());
 assert!(union_type.is_union());
 
-// 类型操作
+// Type operations
 let is_assignable = number_type.is_assignable_to(&TsValue::Any);
 assert!(is_assignable);
 
@@ -204,12 +204,12 @@ assert!(property_keys.contains(&"name".to_string()));
 assert!(property_keys.contains(&"version".to_string()));
 ```
 
-### 使用条件类型
+### Using Conditional Types
 
 ```rust
 use typescript_types::{TsValue, Conditional};
 
-// 创建条件类型: T extends U ? X : Y
+// Create conditional type: T extends U ? X : Y
 let conditional_type = Conditional::new(
     TsValue::Number(1.0),  // T
     TsValue::Number(0.0),  // U
@@ -220,14 +220,14 @@ let conditional_type = Conditional::new(
 let ts_conditional = TsValue::Conditional(conditional_type);
 ```
 
-### 使用映射类型
+### Using Mapped Types
 
 ```rust
 use typescript_types::{TsValue, Mapped};
 
-// 创建映射类型: { [K in keyof T]: V }
+// Create mapped type: { [K in keyof T]: V }
 let mapped_type = Mapped::new(
-    "K".to_string(),  // 类型参数
+    "K".to_string(),  // Type parameter
     TsValue::KeyOf(Box::new(TsValue::Object(std::collections::HashMap::new()))),  // keyof T
     TsValue::String("mapped".to_string()),  // V
 );
@@ -235,29 +235,29 @@ let mapped_type = Mapped::new(
 let ts_mapped = TsValue::Mapped(mapped_type);
 ```
 
-## 性能优化
+## ⚡ Performance Optimization
 
-- **类型缓存**: 对于频繁使用的类型，可以使用缓存来避免重复创建
-- **惰性求值**: 对于复杂类型操作，考虑使用惰性求值来提高性能
-- **批量操作**: 对于多个类型操作，尽量使用批量处理来减少开销
+- **Type Caching**: For frequently used types, use caching to avoid duplicate creation
+- **Lazy Evaluation**: For complex type operations, consider using lazy evaluation to improve performance
+- **Batch Operations**: For multiple type operations, use batch processing to reduce overhead
 
-## 错误处理
+## 🛡️ Error Handling
 
-类型系统提供了 `Error` 类型来表示错误情况：
+The type system provides an `Error` type to represent error situations:
 
 ```rust
 let error_type = TsValue::Error("Type error".to_string());
 assert!(error_type.is_error());
 ```
 
-## 总结
+## 📝 Summary
 
-TypeScript 类型系统 API 提供了丰富的类型操作功能，支持 TypeScript 中的各种类型特性。通过这些 API，开发者可以：
+The TypeScript Type System API provides rich type manipulation functionality, supporting various TypeScript type features. Through these APIs, developers can:
 
-1. 表示和操作各种 TypeScript 类型
-2. 执行类型检查和转换
-3. 处理复杂的类型关系
-4. 实现类型推断和替换
-5. 支持高级类型特性如条件类型和映射类型
+1. Represent and manipulate various TypeScript types
+2. Perform type checking and conversion
+3. Handle complex type relationships
+4. Implement type inference and substitution
+5. Support advanced type features like conditional types and mapped types
 
-这些 API 为 Rusty TypeScript 编译器提供了坚实的类型系统基础，使得编译器能够正确处理 TypeScript 的类型系统特性。
+These APIs provide a solid type system foundation for the Rusty TypeScript compiler, enabling the compiler to correctly handle TypeScript's type system features.

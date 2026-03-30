@@ -36,7 +36,7 @@ impl SymbolCollector {
     }
 
     /// 增量收集符号
-    pub fn collect_incremental(&mut self, source: &str, range: core::range::Range<usize>) -> &SymbolTable {
+    pub fn collect_incremental(&mut self, source: &str, _range: core::range::Range<usize>) -> &SymbolTable {
         // 简单实现：重新收集整个文件
         self.collect(source)
     }
@@ -47,7 +47,7 @@ impl SymbolCollector {
         let mut offset = 0;
         let mut brace_stack: Vec<(usize, ScopeType)> = Vec::new();
 
-        for (line_idx, line) in lines.iter().enumerate() {
+        for (_line_idx, line) in lines.iter().enumerate() {
             let line_start = offset;
             let line_end = offset + line.len();
             let trimmed = line.trim();
@@ -150,7 +150,7 @@ impl SymbolCollector {
     }
 
     /// 解析函数声明
-    fn parse_function_declaration(&mut self, line: &str, line_start: usize, line_end: usize, source: &str) {
+    fn parse_function_declaration(&mut self, line: &str, line_start: usize, line_end: usize, _source: &str) {
         if !line.starts_with("function ") && !line.starts_with("async function ") {
             return;
         }
@@ -227,7 +227,7 @@ impl SymbolCollector {
     }
 
     /// 解析类声明
-    fn parse_class_declaration(&mut self, line: &str, line_start: usize, line_end: usize, source: &str) {
+    fn parse_class_declaration(&mut self, line: &str, line_start: usize, line_end: usize, _source: &str) {
         if !line.starts_with("class ") && !line.starts_with("export class ") && !line.starts_with("abstract class ") {
             return;
         }
@@ -269,7 +269,7 @@ impl SymbolCollector {
     }
 
     /// 解析接口声明
-    fn parse_interface_declaration(&mut self, line: &str, line_start: usize, line_end: usize, source: &str) {
+    fn parse_interface_declaration(&mut self, line: &str, line_start: usize, line_end: usize, _source: &str) {
         if !line.starts_with("interface ") && !line.starts_with("export interface ") {
             return;
         }
@@ -337,7 +337,7 @@ impl SymbolCollector {
     }
 
     /// 解析枚举声明
-    fn parse_enum_declaration(&mut self, line: &str, line_start: usize, line_end: usize, source: &str) {
+    fn parse_enum_declaration(&mut self, line: &str, line_start: usize, line_end: usize, _source: &str) {
         if !line.starts_with("enum ") && !line.starts_with("export enum ") && !line.starts_with("const enum ") {
             return;
         }

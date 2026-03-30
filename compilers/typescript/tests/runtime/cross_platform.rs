@@ -61,4 +61,3 @@ fn test_runtime_status() {
     assert!(status.contains("Modules:"));
     assert!(status.contains("Objects:"));
 }
-

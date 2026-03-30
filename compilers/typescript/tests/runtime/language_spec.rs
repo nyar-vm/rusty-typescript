@@ -96,36 +96,30 @@ mod language_spec {
             "type IsString<T> = T extends string ? true : false; type A = IsString<string>; type B = IsString<number>; 'test'",
         )
         .unwrap();
-        
+
         // 测试条件类型与 infer
         ts.execute_script(
             "type ReturnType<T> = T extends (...args: any[]) => infer R ? R : any; function add(a: number, b: number): number { return a + b; } type AddReturnType = ReturnType<typeof add>; 'test'",
         )
         .unwrap();
-        
+
         // 测试映射类型的修饰符
         ts.execute_script(
             "type Partial<T> = { [P in keyof T]?: T[P]; }; type Person = { name: string; age: number; }; type PartialPerson = Partial<Person>; let p: PartialPerson = { name: 'Alice' }; p",
         )
         .unwrap();
-        
+
         // 测试 keyof 和 typeof
         ts.execute_script(
             "type Person = { name: string; age: number; }; type PersonKeys = keyof Person; const person = { name: 'Alice', age: 30 }; type PersonType = typeof person; 'test'",
         )
         .unwrap();
-        
+
         // 测试索引访问类型
-        ts.execute_script(
-            "type Person = { name: string; age: number; }; type NameType = Person['name']; 'test'",
-        )
-        .unwrap();
-        
+        ts.execute_script("type Person = { name: string; age: number; }; type NameType = Person['name']; 'test'").unwrap();
+
         // 测试模板字面量类型
-        ts.execute_script(
-            "type Greeting = `Hello, ${string}!`; let greeting: Greeting = 'Hello, Alice!'; greeting",
-        )
-        .unwrap();
+        ts.execute_script("type Greeting = `Hello, ${string}!`; let greeting: Greeting = 'Hello, Alice!'; greeting").unwrap();
     }
 
     /// 测试枚举
@@ -189,15 +183,18 @@ mod language_spec {
 
         // 测试默认参数
         ts.execute_script("function greet(name: string, greeting: string = 'Hello'): string { return `${greeting}, ${name}!`; } greet('Alice')").unwrap();
-        
+
         // 测试剩余参数
         ts.execute_script("function sum(...numbers: number[]): number { return numbers.reduce((acc, num) => acc + num, 0); } sum(1, 2, 3, 4, 5)").unwrap();
-        
+
         // 测试函数重载
         ts.execute_script("function process(value: string): string; function process(value: number): number; function process(value: any): any { return value; } process('hello'); process(42)").unwrap();
-        
+
         // 测试函数类型
-        ts.execute_script("type AddFunction = (a: number, b: number) => number; const add: AddFunction = (a, b) => a + b; add(1, 2)").unwrap();
+        ts.execute_script(
+            "type AddFunction = (a: number, b: number) => number; const add: AddFunction = (a, b) => a + b; add(1, 2)",
+        )
+        .unwrap();
     }
 
     /// 测试数组和对象
@@ -208,18 +205,19 @@ mod language_spec {
         // 测试数组
         ts.execute_script("let numbers: number[] = [1, 2, 3]; numbers[0]").unwrap();
         ts.execute_script("let numbers: Array<number> = [1, 2, 3]; numbers.length").unwrap();
-        
+
         // 测试元组类型
         ts.execute_script("let tuple: [string, number] = ['Alice', 30]; tuple[0]").unwrap();
-        
+
         // 测试对象
         ts.execute_script("let person: { name: string; age: number } = { name: 'Alice', age: 30 }; person.name").unwrap();
-        
+
         // 测试对象的可选属性
         ts.execute_script("let person: { name: string; age?: number } = { name: 'Alice' }; person.name").unwrap();
-        
+
         // 测试对象的只读属性
-        ts.execute_script("let person: { readonly name: string; age: number } = { name: 'Alice', age: 30 }; person.name").unwrap();
+        ts.execute_script("let person: { readonly name: string; age: number } = { name: 'Alice', age: 30 }; person.name")
+            .unwrap();
     }
 
     /// 测试类型断言
@@ -267,35 +265,36 @@ mod language_spec {
 
         // 测试类型守卫
         ts.execute_script("function isString(x: any): x is string { return typeof x === 'string'; } function process(x: string | number) { if (isString(x)) { return x.length; } else { return x.toString(); } } process('hello')").unwrap();
-        
+
         // 测试 instanceof 类型守卫
         ts.execute_script("class Animal { } class Dog extends Animal { bark() { return 'woof'; } } function processAnimal(animal: Animal) { if (animal instanceof Dog) { return animal.bark(); } else { return 'generic animal'; } } processAnimal(new Dog())").unwrap();
-        
+
         // 测试字面量类型守卫
         ts.execute_script("type Direction = 'up' | 'down' | 'left' | 'right'; function processDirection(dir: Direction) { if (dir === 'up') { return 'going up'; } else if (dir === 'down') { return 'going down'; } else if (dir === 'left') { return 'going left'; } else { return 'going right'; } } processDirection('up')").unwrap();
     }
-    
+
     /// 测试类型推断和兼容性
     #[test]
     fn test_type_inference_compatibility() {
         let mut ts = TypeScript::new();
-        
+
         // 测试类型推断
         ts.execute_script("let x = 42; x + 1").unwrap(); // x 被推断为 number
         ts.execute_script("let y = 'hello'; y.length").unwrap(); // y 被推断为 string
         ts.execute_script("let z = { name: 'Alice', age: 30 }; z.name").unwrap(); // z 被推断为 { name: string, age: number }
-        
+
         // 测试类型兼容性
         ts.execute_script("interface A { x: number; } interface B { x: number; y: number; } let a: A = { x: 1 }; let b: B = { x: 1, y: 2 }; a = b; a").unwrap(); // B 兼容 A
-        
+
         // 测试函数类型兼容性
         ts.execute_script("type FuncA = (a: number, b: number) => number; type FuncB = (a: number, b: number, c?: number) => number; let funcA: FuncA = (a, b) => a + b; let funcB: FuncB = funcA; funcB(1, 2)").unwrap(); // FuncA 兼容 FuncB
-        
+
         // 测试联合类型兼容性
         ts.execute_script("let x: string | number = 'hello'; x = 42; x").unwrap();
-        
+
         // 测试交叉类型兼容性
-        ts.execute_script("type A = { a: number }; type B = { b: string }; type C = A & B; let c: C = { a: 1, b: 'test' }; c").unwrap();
+        ts.execute_script("type A = { a: number }; type B = { b: string }; type C = A & B; let c: C = { a: 1, b: 'test' }; c")
+            .unwrap();
     }
 
     /// 测试模块解析

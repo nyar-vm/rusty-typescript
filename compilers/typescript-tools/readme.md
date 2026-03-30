@@ -1,31 +1,31 @@
 # rusty-typescript-tools
 
-Rusty TypeScript CLI 工具集，提供与官方 TypeScript 编译器类似的功能，包括编译、类型检查、代码格式化等核心功能。
+Rusty TypeScript CLI toolset providing TypeScript compiler-like functionality, including compilation, type checking, code formatting, and other core features.
 
-## 功能特性
+## ✨ Features
 
-- **tsc 命令**：与官方 TypeScript 编译器兼容的命令行工具
-- **并行编译**：利用多核 CPU 提高编译速度
-- **跨平台支持**：支持 Windows、Linux、macOS
-- **高性能**：基于 Rust 实现，性能优于官方 TypeScript 编译器
-- **类型检查**：支持 TypeScript 类型系统
-- **代码格式化**：提供代码格式化功能
-- **模块解析**：支持 ES 模块和 CommonJS 模块
-- **配置文件**：支持 tsconfig.json 配置文件
+- **tsc Command**: Command-line tool compatible with official TypeScript compiler
+- **Parallel Compilation**: Utilizes multi-core CPU for faster compilation
+- **Cross-platform Support**: Supports Windows, Linux, macOS
+- **High Performance**: Rust-based implementation, outperforms official TypeScript compiler
+- **Type Checking**: Supports TypeScript type system
+- **Code Formatting**: Provides code formatting functionality
+- **Module Resolution**: Supports ES modules and CommonJS modules
+- **Configuration Files**: Supports tsconfig.json configuration files
 
-## 安装
+## 🚀 Installation
 
-### 从源码构建
+### From Source
 
 ```bash
-# 克隆仓库
+# Clone repository
 git clone https://github.com/nyar-vm/rusty-typescript.git
 cd rusty-typescript
 
-# 构建工具
+# Build tools
 cargo build --release
 
-# 将可执行文件添加到 PATH 环境变量
+# Add executable to PATH
 # Windows
 set PATH=%PATH%;%cd%\target\release
 
@@ -33,100 +33,100 @@ set PATH=%PATH%;%cd%\target\release
 export PATH=$PATH:$PWD/target/release
 ```
 
-## 使用方法
+## 📖 Usage
 
-### 基本编译
+### Basic Compilation
 
 ```bash
-# 编译单个文件
+# Compile single file
 tsc test.ts
 
-# 编译多个文件
+# Compile multiple files
 tsc test1.ts test2.ts test3.ts
 
-# 指定输出目录
+# Specify output directory
 tsc --outDir dist test.ts
 ```
 
-### 类型检查
+### Type Checking
 
 ```bash
-# 仅进行类型检查，不生成输出文件
+# Type check only, no output files
 tsc --noEmit test.ts
 ```
 
-### 代码格式化
+### Code Formatting
 
 ```bash
-# 格式化代码
+# Format code
 tsc --format test.ts
 ```
 
-### 配置文件
+### Configuration Files
 
 ```bash
-# 使用 tsconfig.json 配置文件
-tsc --project tsconfig.json
+# Use tsconfig.json
+ntsc --project tsconfig.json
 ```
 
-### 常用选项
+### Common Options
 
-- `--outDir <DIR>`：指定输出目录
-- `--target <VERSION>`：指定目标 ECMAScript 版本
-- `--module <MODULE>`：指定模块系统
-- `--strict`：启用严格模式
-- `--noEmit`：不生成输出文件
-- `--sourceMap`：生成 source map
-- `--format`：格式化代码
-- `--json`：输出 JSON 格式
-- `--quiet`：安静模式，仅显示错误
-- `--watch`：监视模式
-- `--declaration`：生成声明文件
-- `--noEmitOnError`：仅类型检查
-- `--skipLibCheck`：跳过库检查
-- `--removeComments`：移除注释
-- `--minify`：压缩输出
-- `--project <FILE>`：配置文件路径
+- `--outDir <DIR>`: Specify output directory
+- `--target <VERSION>`: Specify target ECMAScript version
+- `--module <MODULE>`: Specify module system
+- `--strict`: Enable strict mode
+- `--noEmit`: No output files
+- `--sourceMap`: Generate source map
+- `--format`: Format code
+- `--json`: Output JSON format
+- `--quiet`: Quiet mode, only show errors
+- `--watch`: Watch mode
+- `--declaration`: Generate declaration files
+- `--noEmitOnError`: Type check only
+- `--skipLibCheck`: Skip library checks
+- `--removeComments`: Remove comments
+- `--minify`: Minify output
+- `--project <FILE>`: Configuration file path
 
-## 性能对比
+## 📊 Performance Comparison
 
-| 测试场景 | 官方 tsc | rusty-typescript tsc | 性能提升 |
-|---------|---------|---------------------|----------|
-| 编译单个文件 | 1.2s | 0.3s | 75% |
-| 编译 10 个文件 | 2.8s | 0.6s | 78% |
-| 编译 100 个文件 | 15.6s | 2.1s | 86% |
+| Test Scenario | Official tsc | rusty-typescript tsc | Performance Improvement |
+|--------------|-------------|---------------------|------------------------|
+| Single file compilation | 1.2s | 0.3s | 75% |
+| 10 files compilation | 2.8s | 0.6s | 78% |
+| 100 files compilation | 15.6s | 2.1s | 86% |
 
-## 项目结构
+## 📁 Project Structure
 
 ```
 compilers/typescript-tools/
 ├── src/
-│   ├── bin/            # 命令行工具
-│   │   └── tsc.rs      # tsc 命令实现
-│   ├── compiler/       # 编译器模块
-│   ├── config/         # 配置模块
-│   ├── formatter/      # 格式化模块
-│   ├── utils/          # 工具函数
-│   └── lib.rs          # 库入口
-├── tests/              # 测试文件
-├── Cargo.toml          # 项目配置
-└── readme.md           # 项目文档
+│   ├── bin/            # Command-line tools
+│   │   └── tsc.rs      # tsc command implementation
+│   ├── compiler/       # Compiler module
+│   ├── config/         # Configuration module
+│   ├── formatter/      # Formatter module
+│   ├── utils/          # Utility functions
+│   └── lib.rs          # Library entry point
+├── tests/              # Test files
+├── Cargo.toml          # Project configuration
+└── readme.md           # Project documentation
 ```
 
-## 测试
+## 🧪 Testing
 
 ```bash
-# 运行所有测试
+# Run all tests
 cargo test
 
-# 运行特定测试
+# Run specific test
 cargo test test_compile_file
 ```
 
-## 贡献
+## 🤝 Contributing
 
-欢迎提交 Issue 和 Pull Request！
+We welcome issues and pull requests!
 
-## 许可证
+## 📄 License
 
 MIT

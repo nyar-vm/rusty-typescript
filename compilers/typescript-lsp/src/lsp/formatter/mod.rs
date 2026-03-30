@@ -671,7 +671,7 @@ impl Formatter {
                     // 检查是否需要添加尾随逗号
                     let mut needs_trailing_comma = false;
                     let mut temp_chars = result.chars().rev();
-                    let mut seen_non_whitespace = false;
+                    let _seen_non_whitespace = false;
 
                     while let Some(ch) = temp_chars.next() {
                         if ch.is_whitespace() {
@@ -703,7 +703,7 @@ impl Formatter {
                     // 检查是否需要添加尾随逗号
                     let mut needs_trailing_comma = false;
                     let mut temp_chars = result.chars().rev();
-                    let mut seen_non_whitespace = false;
+                    let _seen_non_whitespace = false;
 
                     while let Some(ch) = temp_chars.next() {
                         if ch.is_whitespace() {
@@ -735,7 +735,7 @@ impl Formatter {
                     // 检查是否需要添加尾随逗号
                     let mut needs_trailing_comma = false;
                     let mut temp_chars = result.chars().rev();
-                    let mut seen_non_whitespace = false;
+                    let _seen_non_whitespace = false;
 
                     while let Some(ch) = temp_chars.next() {
                         if ch.is_whitespace() {

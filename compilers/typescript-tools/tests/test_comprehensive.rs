@@ -1,1 +1,167 @@
-use std::{fs, path::PathBuf};use typescript_tools::{    config::{load_config_with_extends, resolve_file_patterns},    execute_file,    init,    utils::{ensure_dir, normalize_path_separators},};#[test]fn test_command_line_options() {    // 测试命令行参数解析    // 这里我们测试配置文件加载功能    let test_config = PathBuf::from("tsconfig.test.json");    let config_content = r#"{        "compilerOptions": {            "target": "es2021",            "module": "commonjs",            "strict": true,            "outDir": "./dist"        },        "include": ["src/**/*"],        "exclude": ["node_modules"]    }"#;    fs::write(&test_config, config_content).unwrap();    // 测试加载配置文件    match load_config_with_extends(&test_config) {        Ok(config) => {            assert_eq!(config.compiler_options.unwrap().target.unwrap(), "es2021");            assert_eq!(config.compiler_options.unwrap().module.unwrap(), "commonjs");            assert_eq!(config.compiler_options.unwrap().strict.unwrap(), true);            assert_eq!(config.compiler_options.unwrap().out_dir.unwrap(), "./dist");            assert_eq!(config.include.unwrap(), vec!["src/**/*"]);            assert_eq!(config.exclude.unwrap(), vec!["node_modules"]);        }        Err(e) => {            panic!("Failed to load config: {}", e);        }    }    // 清理    fs::remove_file(&test_config).unwrap();}#[test]fn test_file_pattern_resolution() {    // 创建测试目录结构    let src_dir = PathBuf::from("test_src");    let sub_dir = src_dir.join("sub");    fs::create_dir_all(&sub_dir).unwrap();    // 创建测试文件    let file1 = src_dir.join("test1.ts");    let file2 = src_dir.join("test2.ts");    let file3 = sub_dir.join("test3.ts");    fs::write(&file1, "console.log('test1');").unwrap();    fs::write(&file2, "console.log('test2');").unwrap();    fs::write(&file3, "console.log('test3');").unwrap();    // 测试文件模式解析    let base_dir = PathBuf::from(".");    let include = Some(vec!["test_src/**/*"]);    let exclude = Some(vec!["test_src/sub/**"]);    match resolve_file_patterns(&base_dir, include.as_ref(), exclude.as_ref()) {        Ok(files) => {            // 应该只包含 test1.ts 和 test2.ts            assert_eq!(files.len(), 2);            assert!(files.contains(&file1));            assert!(files.contains(&file2));            assert!(!files.contains(&file3));        }        Err(e) => {            panic!("Failed to resolve file patterns: {}", e);        }    }    // 清理    fs::remove_dir_all(&src_dir).unwrap();}#[test]fn test_execute_file() {    // 创建测试文件    let test_file = PathBuf::from("test_execute.ts");    let content = "console.log('Hello from TypeScript!');";    fs::write(&test_file, content).unwrap();    // 初始化工具集    init();    // 测试执行文件    match execute_file(&test_file) {        Ok(result) => {            assert!(!result.is_empty());        }        Err(e) => {            // 执行可能失败，因为核心编译器可能还未完全实现            // 但至少应该能解析文件路径            println!("Execute file failed (expected): {}", e);        }    }    // 清理    fs::remove_file(&test_file).unwrap();}#[test]fn test_utils() {    // 测试路径规范化    let test_path = PathBuf::from("test\\path\\to\\file.ts");    let normalized_path = normalize_path_separators(&test_path);    assert!(normalized_path.to_string_lossy().contains("/"));    // 测试目录创建    let test_dir = PathBuf::from("test_dir");    if test_dir.exists() {        fs::remove_dir_all(&test_dir).unwrap();    }    match ensure_dir(&test_dir) {        Ok(_) => {            assert!(test_dir.exists());        }        Err(e) => {            panic!("Failed to create directory: {}", e);        }    }    // 清理    fs::remove_dir_all(&test_dir).unwrap();}#[test]fn test_edge_cases() {    // 测试不存在的文件    let non_existent_file = PathBuf::from("non_existent_file.ts");    init();    match execute_file(&non_existent_file) {        Ok(_) => {            panic!("Should have failed for non-existent file");        }        Err(e) => {            // 应该失败，因为文件不存在            println!("Expected error for non-existent file: {}", e);        }    }    // 测试空配置文件    let empty_config = PathBuf::from("empty_tsconfig.json");    fs::write(&empty_config, "{}").unwrap();    match load_config_with_extends(&empty_config) {        Ok(config) => {            // 应该加载成功，但所有选项都是默认值            assert!(config.compiler_options.is_none());            assert!(config.include.is_none());            assert!(config.exclude.is_none());        }        Err(e) => {            panic!("Failed to load empty config: {}", e);        }    }    // 清理    fs::remove_file(&empty_config).unwrap();}
+use std::{fs, path::PathBuf};
+use typescript_tools::{
+    config::{load_config_with_extends, resolve_file_patterns},
+    execute_file, init,
+    utils::{ensure_dir, normalize_path_separators},
+};
+
+#[test]
+fn test_command_line_options() {
+    // 测试命令行参数解析
+    // 这里我们测试配置文件加载功能
+    let test_config = PathBuf::from("tsconfig.test.json");
+    let config_content = r#"{
+        "compilerOptions": {
+            "target": "es2021",
+            "module": "commonjs",
+            "strict": true,
+            "outDir": "./dist"
+        },
+        "include": ["src/**/*"],
+        "exclude": ["node_modules"]
+    }"#;
+    fs::write(&test_config, config_content).unwrap();
+
+    // 测试加载配置文件
+    match load_config_with_extends(&test_config) {
+        Ok(config) => {
+            assert_eq!(config.compiler_options.unwrap().target.unwrap(), "es2021");
+            assert_eq!(config.compiler_options.unwrap().module.unwrap(), "commonjs");
+            assert_eq!(config.compiler_options.unwrap().strict.unwrap(), true);
+            assert_eq!(config.compiler_options.unwrap().out_dir.unwrap(), "./dist");
+            assert_eq!(config.include.unwrap(), vec!["src/**/*"]);
+            assert_eq!(config.exclude.unwrap(), vec!["node_modules"]);
+        }
+        Err(e) => {
+            panic!("Failed to load config: {}", e);
+        }
+    }
+
+    // 清理
+    fs::remove_file(&test_config).unwrap();
+}
+
+#[test]
+fn test_file_pattern_resolution() {
+    // 创建测试目录结构
+    let src_dir = PathBuf::from("test_src");
+    let sub_dir = src_dir.join("sub");
+    fs::create_dir_all(&sub_dir).unwrap();
+
+    // 创建测试文件
+    let file1 = src_dir.join("test1.ts");
+    let file2 = src_dir.join("test2.ts");
+    let file3 = sub_dir.join("test3.ts");
+    fs::write(&file1, "console.log('test1');").unwrap();
+    fs::write(&file2, "console.log('test2');").unwrap();
+    fs::write(&file3, "console.log('test3');").unwrap();
+
+    // 测试文件模式解析
+    let base_dir = PathBuf::from(".");
+    let include = Some(vec!["test_src/**/*"]);
+    let exclude = Some(vec!["test_src/sub/**"]);
+
+    match resolve_file_patterns(base_dir, include.as_ref(), exclude.as_ref()) {
+        Ok(files) => {
+            // 应该只包含 test1.ts 和 test2.ts
+            assert_eq!(files.len(), 2);
+            assert!(files.contains(&file1));
+            assert!(files.contains(&file2));
+            assert!(!files.contains(&file3));
+        }
+        Err(e) => {
+            panic!("Failed to resolve file patterns: {}", e);
+        }
+    }
+
+    // 清理
+    fs::remove_dir_all(&src_dir).unwrap();
+}
+
+#[test]
+fn test_execute_file() {
+    // 创建测试文件
+    let test_file = PathBuf::from("test_execute.ts");
+    let content = "console.log('Hello from TypeScript!');";
+    fs::write(&test_file, content).unwrap();
+
+    // 初始化工具集
+    init();
+
+    // 测试执行文件
+    match execute_file(&test_file) {
+        Ok(result) => {
+            assert!(!result.is_empty());
+        }
+        Err(e) => {
+            // 执行可能失败，因为核心编译器可能还未完全实现
+            // 但至少应该能解析文件路径
+            println!("Execute file failed (expected): {}", e);
+        }
+    }
+
+    // 清理
+    fs::remove_file(&test_file).unwrap();
+}
+
+#[test]
+fn test_utils() {
+    // 测试路径规范化
+    let test_path = PathBuf::from("test\\path\\to\\file.ts");
+    let normalized_path = normalize_path_separators(&test_path);
+    assert!(normalized_path.to_string_lossy().contains("/"));
+
+    // 测试目录创建
+    let test_dir = PathBuf::from("test_dir");
+    if test_dir.exists() {
+        fs::remove_dir_all(&test_dir).unwrap();
+    }
+
+    match ensure_dir(&test_dir) {
+        Ok(_) => {
+            assert!(test_dir.exists());
+        }
+        Err(e) => {
+            panic!("Failed to create directory: {}", e);
+        }
+    }
+
+    // 清理
+    fs::remove_dir_all(&test_dir).unwrap();
+}
+
+#[test]
+fn test_edge_cases() {
+    // 测试不存在的文件
+    let non_existent_file = PathBuf::from("non_existent_file.ts");
+    init();
+
+    match execute_file(&non_existent_file) {
+        Ok(_) => {
+            panic!("Should have failed for non-existent file");
+        }
+        Err(e) => {
+            // 应该失败，因为文件不存在
+            println!("Expected error for non-existent file: {}", e);
+        }
+    }
+
+    // 测试空配置文件
+    let empty_config = PathBuf::from("empty_tsconfig.json");
+    fs::write(&empty_config, "{}").unwrap();
+
+    match load_config_with_extends(&empty_config) {
+        Ok(config) => {
+            // 应该加载成功，但所有选项都是默 认值
+            assert!(config.compiler_options.is_none());
+            assert!(config.include.is_none());
+            assert!(config.exclude.is_none());
+        }
+        Err(e) => {
+            panic!("Failed to load empty config: {}", e);
+        }
+    }
+
+    // 清理
+    fs::remove_file(&empty_config).unwrap();
+}

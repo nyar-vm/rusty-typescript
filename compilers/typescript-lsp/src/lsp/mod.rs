@@ -514,10 +514,10 @@ impl TypeScriptLanguageService {
         };
 
         // Calculate column offset
-        let mut current_offset = line_start;
+        let _current_offset = line_start;
         let mut current_col = 0;
 
-        for (i, c) in text[line_start..].char_indices() {
+        for (i, _c) in text[line_start..].char_indices() {
             if current_col >= column {
                 return line_start + i;
             }

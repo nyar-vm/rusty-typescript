@@ -108,7 +108,7 @@ impl InlayHintProvider {
                                 let params = self.extract_parameter_names(type_annotation);
                                 let arg_positions = self.find_argument_positions(line, paren_idx);
 
-                                for (i, (arg_pos, param_name)) in arg_positions.iter().zip(params.iter()).enumerate() {
+                                for (_i, (arg_pos, param_name)) in arg_positions.iter().zip(params.iter()).enumerate() {
                                     hints.push(InlayHint::parameter_name(
                                         base_offset + line_offset + arg_pos,
                                         param_name.clone(),

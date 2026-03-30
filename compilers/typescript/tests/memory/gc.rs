@@ -359,7 +359,7 @@ fn test_allocation_strategy_switch() {
 #[test]
 fn test_logging_event_handler() {
     use typescript::gc::LoggingEventHandler;
-    
+
     let handler = LoggingEventHandler::new();
     handler.on_gc_start(GCPhase::Marking);
 
@@ -374,7 +374,7 @@ fn test_logging_event_handler() {
 #[test]
 fn test_verbose_logging_event_handler() {
     use typescript::gc::LoggingEventHandler;
-    
+
     let handler = LoggingEventHandler::verbose();
     handler.on_gc_start(GCPhase::Sweeping);
 
@@ -391,9 +391,9 @@ fn test_verbose_logging_event_handler() {
 /// 验证工作窃取队列的基本操作
 #[test]
 fn test_work_stealing_queue_basic() {
-    use typescript::gc::WorkStealingQueue;
     use std::ptr::NonNull;
-    
+    use typescript::gc::WorkStealingQueue;
+
     let queue = WorkStealingQueue::new();
 
     assert!(queue.is_empty());
@@ -420,9 +420,9 @@ fn test_work_stealing_queue_basic() {
 /// 验证工作窃取队列的窃取操作
 #[test]
 fn test_work_stealing_queue_steal() {
-    use typescript::gc::WorkStealingQueue;
     use std::ptr::NonNull;
-    
+    use typescript::gc::WorkStealingQueue;
+
     let queue = WorkStealingQueue::new();
 
     let obj1 = Box::new(typescript::gc::GcObject::new(typescript_types::TsValue::Null, 0, 0));

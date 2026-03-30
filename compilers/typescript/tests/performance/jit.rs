@@ -38,11 +38,9 @@ fn test_jit_compilation() {
     }
 }
 
-
-//! JIT 性能测试
-//!
-//! 测试 JIT 编译优化的性能效果
-
+/// JIT 性能测试
+///
+/// 测试 JIT 编译优化的性能效果
 use std::time::Instant;
 use typescript_ir::Program;
 use typescript_types::TsValue;
@@ -100,8 +98,11 @@ fn test_memory_optimization() {
     println!("内存管理优化测试完成，执行 10000 次对象创建和回收耗时: {:?}", duration);
 }
 
-use typescript::jit::{JITCompiler, JITEvent, JITEventCallback, CompileStatus, HotFunctionInfo, HotFunctionPriorityQueue, PriorityEntry, AdaptiveThresholdConfig, JITStatistics};
 use std::rc::Rc;
+use typescript::jit::{
+    AdaptiveThresholdConfig, CompileStatus, HotFunctionInfo, HotFunctionPriorityQueue, JITCompiler, JITEvent, JITEventCallback,
+    JITStatistics, PriorityEntry,
+};
 
 struct TestCallback {
     events: std::cell::RefCell<Vec<JITEvent>>,
@@ -228,10 +229,9 @@ fn test_event_callback() {
 #[test]
 fn test_performance_suite() {
     use typescript::jit::PerformanceTestSuite;
-    
+
     let mut suite = PerformanceTestSuite::new();
     suite.run_all_tests();
     suite.print_results();
     assert!(!suite.get_results().is_empty());
 }
-

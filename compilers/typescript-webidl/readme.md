@@ -1,19 +1,19 @@
-# TypeScript WebIDL 编译器
+# TypeScript WebIDL Compiler
 
-TypeScript WebIDL 编译器是一个将 WebIDL 转换为 TypeScript 类型定义的工具，基于 Oak IDL 库构建。
+The TypeScript WebIDL Compiler is a tool for converting WebIDL to TypeScript type definitions, built on top of the Oak IDL library.
 
-## 功能特性
+## ✨ Features
 
-- **WebIDL 解析**：使用 Oak IDL 库解析 WebIDL 字符串
-- **TypeScript 转换**：将解析后的 WebIDL AST 转换为 TypeScript 类型定义
-- **错误处理**：提供详细的错误信息
-- **文件支持**：从文件读取并解析 WebIDL
+- **WebIDL Parsing**: Uses Oak IDL library to parse WebIDL strings
+- **TypeScript Conversion**: Converts parsed WebIDL AST to TypeScript type definitions
+- **Error Handling**: Provides detailed error information
+- **File Support**: Reads and parses WebIDL from files
 
-## 快速开始
+## 🚀 Quick Start
 
-### 安装
+### Installation
 
-在 `Cargo.toml` 文件中添加依赖：
+Add the dependency to your `Cargo.toml` file:
 
 ```toml
 dependencies = {
@@ -21,7 +21,7 @@ dependencies = {
 }
 ```
 
-### 使用示例
+### Usage Example
 
 ```rust
 use typescript_webidl::{parse, convert_to_typescript};
@@ -45,30 +45,30 @@ fn main() {
 }
 ```
 
-## 项目结构
+## 📁 Project Structure
 
-- `src/lib.rs`：主入口文件，包含解析和转换函数
-- `src/converter/`：WebIDL 到 TypeScript 的转换模块
-- `src/types/`：类型定义模块
-- `src/type_checker/`：类型检查模块
-- `tests/`：测试文件
+- `src/lib.rs`：Main entry file, contains parsing and conversion functions
+- `src/converter/`：WebIDL to TypeScript conversion module
+- `src/types/`：Type definition module
+- `src/type_checker/`：Type checking module
+- `tests/`：Test files
 
-## 技术依赖
+## 📚 Dependencies
 
-- **Oak IDL**：用于 WebIDL 解析
-- **Serde**：用于序列化和反序列化
-- **Regex**：用于后备 WebIDL 解析
+- **Oak IDL**：For WebIDL parsing
+- **Serde**：For serialization and deserialization
+- **Regex**：For fallback WebIDL parsing
 
-## 注意事项
+## ⚠️ Notes
 
-- 由于 Oak IDL 库的 `parse` 函数可能返回空的 `items` 向量，项目添加了一个基于正则表达式的后备解析器
-- 后备解析器支持基本的 WebIDL 语法，包括接口、操作和参数
-- 对于复杂的 WebIDL 语法，建议使用标准的 WebIDL 解析器
+- Due to the Oak IDL library's `parse` function potentially returning an empty `items` vector, the project includes a regex-based fallback parser
+- The fallback parser supports basic WebIDL syntax, including interfaces, operations, and parameters
+- For complex WebIDL syntax, it is recommended to use a standard WebIDL parser
 
-## 贡献
+## 🤝 Contributing
 
-欢迎提交 Issue 和 Pull Request！
+We welcome issues and pull requests!
 
-## 许可证
+## 📄 License
 
 MIT
