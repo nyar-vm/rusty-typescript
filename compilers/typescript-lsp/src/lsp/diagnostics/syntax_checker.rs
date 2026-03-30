@@ -291,7 +291,7 @@ fn check_semicolon_issues(content: &str) -> Vec<Diagnostic> {
 }
 
 /// 检查关键字使用
-fn check_keyword_usage(content: &str) -> Vec<Diagnostic> {
+pub fn check_keyword_usage(content: &str) -> Vec<Diagnostic> {
     let mut diagnostics = Vec::new();
     let mut offset = 0;
 
@@ -342,7 +342,7 @@ fn check_keyword_usage(content: &str) -> Vec<Diagnostic> {
 }
 
 /// 检查 switch 语句
-fn check_switch_statements(content: &str) -> Vec<Diagnostic> {
+pub fn check_switch_statements(content: &str) -> Vec<Diagnostic> {
     let mut diagnostics = Vec::new();
     let mut in_switch = false;
     let mut has_default = false;
@@ -389,7 +389,7 @@ fn check_switch_statements(content: &str) -> Vec<Diagnostic> {
 }
 
 /// 检查 try-catch 语句
-fn check_try_catch_statements(content: &str) -> Vec<Diagnostic> {
+pub fn check_try_catch_statements(content: &str) -> Vec<Diagnostic> {
     let mut diagnostics = Vec::new();
     let mut in_try = false;
     let mut in_catch = false;
@@ -444,7 +444,7 @@ fn check_try_catch_statements(content: &str) -> Vec<Diagnostic> {
 }
 
 /// 检查未使用的导入
-fn check_unused_imports(content: &str) -> Vec<Diagnostic> {
+pub fn check_unused_imports(content: &str) -> Vec<Diagnostic> {
     let mut diagnostics = Vec::new();
     let mut imports = Vec::new();
     let mut offset = 0;

@@ -2,7 +2,7 @@
 //!
 //! 测试 WebAssembly 运行时的执行效率，验证性能优化的效果。
 
-use std::{ptr::NonNull, time::Instant};
+use std::time::Instant;
 use typescript_wasi::{WasiRuntime, memory::WasiMemory};
 
 /// 测试内存分配性能

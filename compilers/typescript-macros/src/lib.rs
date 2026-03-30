@@ -676,7 +676,7 @@ pub fn typescript_guard_derive(input: TokenStream) -> TokenStream {
         })
         .collect();
 
-    let guard_conditions_str = guard_conditions.join(" &&\n        ");
+    let _guard_conditions_str = guard_conditions.join(" &&\n        ");
     let guard_function_name = format!("is{}", type_name);
     let guard_function_ident = syn::Ident::new(&guard_function_name, type_name.span());
 
@@ -691,7 +691,7 @@ pub fn typescript_guard_derive(input: TokenStream) -> TokenStream {
                 "function ", stringify!(#guard_function_ident), "(obj: any): obj is ", stringify!(#type_name), " {\n",
                 "    return (\n",
                 "        typeof obj === 'object' && obj !== null &&\n",
-                "        #guard_conditions_str\n",
+                "        #_guard_conditions_str\n",
                 "    );\n",
                 "}\n"
             );

@@ -389,8 +389,9 @@ let previousCode: string = "";
 const checkWasmAvailability = async (): Promise<boolean> => {
     try {
         const { RustyTypeScript } = await import("@nyar/typescript");
-        const instance = await RustyTypeScript.init();
-        instance.dispose();
+        const instance = new RustyTypeScript();
+        await instance.load();
+        instance.reset();
         return true;
     } catch (error) {
         console.warn("WASM 模块不可用，将使用模拟模式:", error);
@@ -416,7 +417,7 @@ const runCode = async () => {
                     const { executeTypeScript } = await import("@nyar/typescript");
                     const execResult = await executeTypeScript(code);
                     result = formatResult(execResult.result);
-                    time = execResult.time;
+                    time = execResult.time || 0;
                     executionMode.value = "wasm";
                 } catch (wasmError) {
                     console.warn("WASM 执行失败，回退到模拟模式:", wasmError);

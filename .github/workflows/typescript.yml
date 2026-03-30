@@ -26,8 +26,12 @@ jobs:
 
             - name: Install dependencies
               run: pnpm install
-              working-directory: frontends/homepage
+              working-directory: .
 
-            - name: Build TypeScript project
-              run: pnpm build
-              working-directory: frontends/homepage
+            - name: Build TypeScript WASI package
+              run: pnpm -F @nyar/typescript build
+              working-directory: .
+
+            - name: Build TypeScript homepage
+              run: pnpm -F @nyar/typescript-homepage build
+              working-directory: .
