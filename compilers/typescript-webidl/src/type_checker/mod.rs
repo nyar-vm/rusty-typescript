@@ -868,7 +868,7 @@ impl TypeInference {
     /// # 返回值
     ///
     /// 返回分割后的元素列表
-    fn split_array_elements(&self, s: &str) -> Vec<&str> {
+    fn split_array_elements<'a>(&self, s: &'a str) -> Vec<&'a str> {
         let mut elements = Vec::new();
         let mut depth = 0;
         let mut start = 0;
@@ -1294,8 +1294,8 @@ impl TypeInference {
     ///
     /// 返回推断出的类型信息
     fn infer_index_access_type(&self, expression: &str) -> InferredType {
-        let open_bracket = expression.find('[')?;
-        let close_bracket = expression.rfind(']')?;
+        let Some(open_bracket) = expression.find('[') else { return InferredType::new("any") };
+        let Some(close_bracket) = expression.rfind(']') else { return InferredType::new("any") };
 
         let object_name = &expression[..open_bracket];
         let index_str = &expression[open_bracket + 1..close_bracket];

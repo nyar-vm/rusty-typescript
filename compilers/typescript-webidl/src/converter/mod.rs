@@ -2,7 +2,7 @@
 //!
 //! 本模块提供将 WebIDL 类型定义转换为 TypeScript 类型定义的功能。
 
-use oak_idl::ast::{Attribute, Constant, IdlItem, IdlMember, IdlRoot, Interface, Operation, Param};
+use oak_idl::ast::{Attribute, IdlItem, IdlMember, IdlRoot, Interface, Operation, Param};
 use std::fmt::Write;
 
 /// 常用 TypeScript 类型静态字符串

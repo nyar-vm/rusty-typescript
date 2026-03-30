@@ -6,7 +6,7 @@ use oak_lsp::{
     types::{
         CodeAction, CompletionItem, Diagnostic, DocumentHighlight, FoldingRange, Hover, InitializeParams, InlayHint,
         LocationRange, SemanticTokens, SignatureHelp, StructureItem, TextEdit, WorkspaceEdit, WorkspaceSymbol,
-        SourcePosition, Range,
+        SourcePosition,
     },
 };
 use oak_vfs::{MemoryVfs, Vfs};
@@ -1490,7 +1490,8 @@ impl LanguageService for TypeScriptLanguageService {
                             _ => oak_lsp::types::InlayHintKind::Type,
                         }),
                         padding_left: Some(hint.kind == crate::lsp::inlay_hints::InlayHintKind::ParameterName),
-                        padding_right: Some(false)
+                        padding_right: Some(false),
+                        tooltip: None
                     }
                 })
                 .collect()
