@@ -16,7 +16,7 @@
     },
     "files": ["dist"],
     "scripts": {
-        "build": "rimraf dist && vite build",
+        "build": "rimraf dist && tsc && vite build",
         "dev": "tsc --watch",
         "test": "vitest"
     },

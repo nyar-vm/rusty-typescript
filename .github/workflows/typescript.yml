@@ -24,12 +24,13 @@ jobs:
               with:
                   version: 10.18.3
 
-            - name: Install dependencies
-              run: pnpm install
+            - name: Modify homepage package.json to use published @nyar/typescript
+              run: |
+                sed -i 's/"@nyar\/typescript": "workspace:\*"/"@nyar\/typescript": "^0.0.0"/' frontends/homepage/package.json
               working-directory: .
 
-            - name: Build TypeScript WASI package
-              run: pnpm -F @nyar/typescript build
+            - name: Install dependencies
+              run: pnpm install
               working-directory: .
 
             - name: Build TypeScript homepage

@@ -7,7 +7,8 @@
         "plugins/*",
         "themes/*",
         "documentation",
-        "benchmarks"
+        "benchmarks",
+        "frontends/*"
     ],
     "scripts": {
         "doc": "cargo doc --no-deps --all-features",
