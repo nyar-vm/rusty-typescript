@@ -131,14 +131,14 @@ fn test_diagnostics() {
     use typescript_lsp::lsp::diagnostics::{Diagnostic, DiagnosticLevel};
 
     // 测试诊断创建
-    let diag = Diagnostic::error("测试错误", Range { start: 0, end: 10 });
+    let diag = Diagnostic::error("测试错误", Range::from(0..10));
     assert_eq!(diag.level, DiagnosticLevel::Error);
     assert_eq!(diag.message, "测试错误");
 
-    let diag = Diagnostic::warning("测试警告", Range { start: 10, end: 20 });
+    let diag = Diagnostic::warning("测试警告", Range::from(10..20));
     assert_eq!(diag.level, DiagnosticLevel::Warning);
 
     // 测试诊断添加错误代码
-    let diag = Diagnostic::error("测试错误", Range { start: 0, end: 10 }).with_code("TS1234");
+    let diag = Diagnostic::error("测试错误", Range::from(0..10)).with_code("TS1234");
     assert_eq!(diag.code, Some("TS1234".to_string()));
 }

@@ -1,6 +1,6 @@
 {
     "name": "@nyar/typescript",
-    "version": "0.0.0",
+    "version": "0.1.0",
     "type": "module",
     "main": "./dist/index.js",
     "types": "./dist/index.d.ts",
@@ -10,6 +10,13 @@
             "types": "./dist/index.d.ts"
         }
     },
+    "publishConfig": {
+        "access": "public"
+    },
+    "files": [
+        "dist",
+        "lib"
+    ],
     "scripts": {
         "build": "tsc && npx --no-install jco transpile ../../target/wasm32-wasip2/release/typescript_wasi.wasm --out-dir lib --name typescriptWasi",
         "dev": "tsc --watch"
