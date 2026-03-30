@@ -5,16 +5,7 @@ export default defineConfig({
     build: {
         target: "esnext",
         outDir: "dist",
-        minify: "terser",
-        terserOptions: {
-            compress: {
-                drop_console: true,
-                drop_debugger: true,
-            },
-            mangle: {
-                toplevel: true,
-            },
-        },
+        minify: true,
         sourcemap: false,
         rollupOptions: {
             output: {
@@ -33,6 +24,14 @@ export default defineConfig({
     optimizeDeps: {
         esbuildOptions: {
             target: "esnext",
+        },
+    },
+    worker: {
+        format: 'es',
+    },
+    resolve: {
+        alias: {
+            '@': resolve(__dirname, 'src'),
         },
     },
 });
